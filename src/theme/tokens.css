@@ -1,0 +1,54 @@
+/*
+ * Semantic color tokens for the DOM HUD.
+ * Hex mirrors `src/theme/colors.ts` (HEX). OKLCH used where browsers support it for
+ * tinted neutrals; hex fallbacks keep the same brand on older engines.
+ */
+:root {
+  --color-void: #070a0e;
+  --color-void: oklch(0.09 0.018 220);
+
+  --color-ink: #eef6f7;
+  --color-ink: oklch(0.96 0.012 220);
+
+  --color-ink-muted: #9aadb2;
+  --color-ink-muted: oklch(0.74 0.02 220);
+
+  --color-player: #00ffff;
+  --color-player: oklch(0.905 0.155 195);
+
+  --color-opponent: #ff6600;
+  --color-opponent: oklch(0.70 0.205 45);
+
+  --color-ball: #ff8a2b;
+  --color-ball: oklch(0.76 0.19 50);
+
+  --color-tin-danger: #ff6600;
+  --color-tin-danger: oklch(0.70 0.205 45);
+
+  --color-court-line: #00ffff;
+  --color-court-line: oklch(0.905 0.155 195);
+
+  --color-game-point: #e6c04a;
+  --color-game-point: oklch(0.84 0.14 95);
+
+  --color-match-point: #d94fff;
+  --color-match-point: oklch(0.68 0.28 325);
+
+  --color-player-pip-off: #1a5c5c;
+  --color-player-pip-off: oklch(0.38 0.06 195);
+
+  --color-opponent-pip-off: #5c3010;
+  --color-opponent-pip-off: oklch(0.35 0.08 45);
+
+  --glow-player: 0 0 18px color-mix(in oklch, var(--color-player) 70%, transparent);
+  --glow-opponent: 0 0 18px color-mix(in oklch, var(--color-opponent) 70%, transparent);
+  --glow-ink: 0 0 16px color-mix(in oklch, var(--color-ink) 35%, transparent);
+  --glow-match: 0 0 14px color-mix(in oklch, var(--color-match-point) 65%, transparent);
+  --glow-game: 0 0 14px color-mix(in oklch, var(--color-game-point) 65%, transparent);
+}
+
+html,
+body,
+#root {
+  background: var(--color-void);
+}

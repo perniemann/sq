@@ -1,0 +1,44 @@
+---
+description: React Three Fiber, Rapier, and Zustand conventions for components and hooks.
+globs: src/components/**/*.tsx,src/hooks/**/*.ts,src/ui/**/*.tsx
+---
+
+# R3F runtime layer
+
+`components/` renders and drives the scene. `hooks/` bridges pure `systems/` logic to
+the R3F runtime. `ui/` is DOM overlay outside the Canvas.
+
+## Per-frame work
+
+- Anything that runs every frame belongs in `useFrame`, not `useEffect` and not a
+  `setInterval`. `useEffect` is for subscriptions and one-shot setup only.
+- Prefer the real `delta` from `useFrame` over `Date.now()`. `Scene.tsx` clamps it to 100 ms before
+  passing it to the AI so a backgrounded tab cannot teleport players; keep that clamp.
+- Do not allocate inside `useFrame`. Hoist `THREE.Vector3`/`Quaternion` scratch objects
+  to module scope or a ref and reuse them. Memoize geometries and materials with `useMemo`.
+- Never call `set*` on the Zustand store every frame for values only the renderer needs;
+  write to a ref and publish to the store only when other systems must observe it.
+
+## Physics
+
+- Rapier rigid bodies own their own transform. Never mirror physics position into React
+  state — read it through a ref (`rigidBody.current.translation()`).
+- Drive bodies with `applyImpulse`, `setLinvel`, `setNextKinematicTranslation`. Do not
+  set `position` props on a body to move it.
+- Collision and intersection handlers (`onCollisionEnter`, `onIntersectionEnter`) are the
+  event path; per-frame polling is the fallback path. Keep the two from double-firing.
+
+## State
+
+All shared game state lives in `src/stores/gameStore.ts`. Subscribe with selectors
+(`useGameStore(s => s.phase)`), never destructure the whole store, or every component
+re-renders on every change. Phase transitions go through the store's action functions —
+do not `set` phase fields from a component.
+
+## Composition and style
+
+Components are declarative JSX plus refs for imperative work. Delegate real logic to a
+hook or a `systems/` function rather than growing a component. Explicit return types on
+exports (`(): React.ReactElement`). No CSS framework — `ui/` uses inline style objects
+in the black / cyan `#00ffff` / orange `#ff6600` neon palette. No semicolons, single
+quotes, 2-space indent, relative imports only.

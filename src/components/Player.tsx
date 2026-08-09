@@ -1,0 +1,769 @@
+import React, { useRef, useMemo, useState } from 'react'
+import { useFrame } from '@react-three/fiber'
+import { RigidBody, CuboidCollider } from '@react-three/rapier'
+import type { RapierRigidBody } from '@react-three/rapier'
+import { useGLTF, Text } from '@react-three/drei'
+import * as THREE from 'three'
+import {
+  COURT,
+  ATHLETE_INSET,
+  ATHLETE_SIZE,
+  ATHLETE_MODEL_SCALE,
+  ATHLETE_MODEL_Z_OFFSET,
+  GLB_ACCENT_MATERIAL,
+} from '../systems/court'
+import { type MovementPhase, type ChargePhase } from '../stores/gameStore'
+import { T_POSITION } from '../systems/courtPositions'
+import { MOVEMENT_TIMING, useInputStore, useAim } from '../hooks/useInput'
+import {
+  calculateSwingState,
+  calculateRacquetTransform,
+  type SwingState,
+} from '../systems/swingAnimation'
+import { isInSwingHitWindow } from '../systems/hitTiming'
+import { DEBUG, displayAlpha } from '../config'
+import { HEX } from '../theme/colors'
+import {
+  AIM_ARC_RANGE,
+  AIM_START_ANGLE,
+  aimToPlayerRotation,
+} from '../systems/aimRotation'
+import { PLAYER_CHASE_SPEED } from '../systems/playerChase'
+
+const CYAN = HEX.player
+/** Footprint radius for ground indicators. Court clamp uses `ATHLETE_INSET` (same value). */
+const PLAYER_SIZE = ATHLETE_SIZE.width / 2
+
+/** Reused when a ball position is not supplied, so useFrame stays allocation-free. */
+const DEFAULT_BALL_POSITION = new THREE.Vector3(0, 1, -2)
+
+/**
+ * Arc length is quantised before it reaches the geometry so the ring is rebuilt at most
+ * this many times per charge instead of once per frame.
+ */
+const CHARGE_ARC_STEPS = 32
+
+// Model paths - GLB assets in public/models/
+const PLAYER_MODEL_PATH = '/models/player.glb'
+const RACQUET_MODEL_PATH = '/models/racquet.glb'
+
+/**
+ * Authored racquet face lies in YZ (thin in X). Swing code expects the string bed in XY
+ * facing ±Z, so the mesh is yawed +90° about Y on load. Hit sensor stays the existing
+ * CuboidCollider — visual only.
+ */
+const RACQUET_FACE_YAW = Math.PI / 2
+
+/** Visual yaw smoothing only — ballistic aim uses `aimToPlayerRotation`. */
+const ROTATION_SMOOTHING = 0.15
+
+/**
+ * Squash movement parameters (from biomechanics research)
+ */
+const MOVEMENT = {
+  // Speed values (units/second)
+  BASE_SPEED: 6,           // Normal movement speed
+  CHASE_SPEED: PLAYER_CHASE_SPEED,
+  RECOVERY_SPEED: 5,       // Slower return to T (energy conservation)
+  
+  // Timing
+  SPLIT_STEP_DURATION: MOVEMENT_TIMING.SPLIT_STEP_DURATION,  // 100ms
+  ACCELERATION_TIME: 0.3,  // seconds to reach 80% speed
+  
+  // Distance thresholds
+  DECELERATION_DISTANCE: 0.5,  // Start slowing 0.5m from target
+  LUNGE_DISTANCE: 0.8,         // Lunge forward when within 0.8m
+  T_ARRIVAL_THRESHOLD: 0.1,    // Consider "at T" within 0.1m
+  
+  // Lunge
+  LUNGE_OFFSET: 0.4,  // Forward offset during lunge
+}
+
+interface PlayerProps {
+  position: [number, number, number]
+  targetPosition?: [number, number, number] | null
+  ballPosition?: THREE.Vector3
+  isCharging?: boolean
+  chargeLevel?: number
+  chargePhase?: ChargePhase
+  movementPhase?: MovementPhase
+  chaseStartTime?: number | null
+  isRecovering?: boolean
+  color?: string
+  isControllable?: boolean
+  /** Whether the racquet is currently swinging (hit detection active) */
+  isSwinging?: boolean
+  /** Power level for the current swing (0-1) */
+  swingPower?: number
+  /** Callback when racquet hits the ball - receives racquet world position, player rotation, and player position for impulse */
+  onRacquetHit?: (racquetPosition: THREE.Vector3, playerRotation: number, playerPosition: THREE.Vector3) => void
+  /** Whether this player is the current striker (their turn to hit) */
+  isCurrentStriker?: boolean
+  /** Whether to hold position (don't auto-move to T during serve) */
+  holdPosition?: boolean
+  /** When charge button was pressed (for swing animation) */
+  chargeStartTime?: number | null
+  /** When swing was triggered (button released) */
+  swingStartTime?: number | null
+  /** Current shot type name to display above player */
+  currentShotName?: string | null
+  /** Written every frame so Scene's proximity hit check can supply the same aim angle. */
+  rotationRef?: React.MutableRefObject<number>
+  /**
+   * Controllable player only: report sim position each frame. Required because Scene
+   * re-renders often (AI `setState`) and must not drive the mesh via a stale `position`
+   * prop — that pinned the body while the racquet still moved.
+   */
+  onPositionFrame?: (x: number, y: number, z: number) => void
+  /**
+   * Live chase / assist target from Scene's useFrame. Prefer this over `targetPosition`
+   * so movement does not depend on a React re-render for the latest floor point.
+   */
+  targetPositionRef?: React.MutableRefObject<[number, number, number] | null>
+  /** m/s for `targetPositionRef` — chase is fast, soft assist is slow. */
+  moveSpeedRef?: React.MutableRefObject<number>
+  /**
+   * AI / demo athlete: live pose from Scene without a React `position` prop each frame.
+   * When set, overrides `position` for non-controllable (and held) bodies.
+   */
+  livePositionRef?: React.MutableRefObject<[number, number, number]>
+}
+
+export default function Player({
+  position,
+  targetPosition = null,
+  ballPosition,
+  isCharging = false,
+  chargeLevel = 0,
+  chargePhase = 'none',
+  movementPhase = 'idle',
+  chaseStartTime = null,
+  isRecovering = false,
+  color = CYAN,
+  isControllable = true,
+  isSwinging = false,
+  swingPower = 0,
+  onRacquetHit,
+  isCurrentStriker = false,
+  holdPosition = false,
+  chargeStartTime = null,
+  swingStartTime = null,
+  currentShotName = null,
+  rotationRef,
+  onPositionFrame,
+  targetPositionRef,
+  moveSpeedRef,
+  livePositionRef,
+}: PlayerProps) {
+  const groupRef = useRef<THREE.Group>(null)
+  const pyramidRef = useRef<THREE.Group>(null)
+  const currentPos = useRef(new THREE.Vector3(...position))
+  const currentRotation = useRef(0)  // Y-axis rotation
+  const velocity = useRef(new THREE.Vector3())
+  const onPositionFrameRef = useRef(onPositionFrame)
+  onPositionFrameRef.current = onPositionFrame
+  const targetPositionRefLocal = useRef(targetPositionRef)
+  targetPositionRefLocal.current = targetPositionRef
+  const moveSpeedRefLocal = useRef(moveSpeedRef)
+  moveSpeedRefLocal.current = moveSpeedRef
+  const livePositionRefLocal = useRef(livePositionRef)
+  livePositionRefLocal.current = livePositionRef
+  
+  // Racquet position state (world space) - use state to trigger re-render when initialized
+  const racquetPositionRef = useRef(new THREE.Vector3())
+  const racquetQuaternionRef = useRef(new THREE.Quaternion())
+  const [racquetReady, setRacquetReady] = useState(false)
+  
+  // Swing state for animation
+  const currentSwingState = useRef<SwingState | null>(null)
+  // Note: With new rotation system, we always use forehand stance
+  // Player rotation (controlled by charge) determines shot direction
+  
+  // Body rotation adjustment for stance
+  const stanceBodyRotation = useRef(0)
+  
+  // Refs for collision callback to avoid stale closures
+  const isSwingingRef = useRef(isSwinging)
+  const onRacquetHitRef = useRef(onRacquetHit)
+  const swingPowerRef = useRef(swingPower)
+  
+  // Keep refs updated
+  isSwingingRef.current = isSwinging
+  onRacquetHitRef.current = onRacquetHit
+  swingPowerRef.current = swingPower
+  
+  // Split-step state
+  const [splitStepActive, setSplitStepActive] = useState(false)
+  const [splitStepScale, setSplitStepScale] = useState(1)
+  
+  // Reusable vectors for useFrame (avoid per-frame allocations)
+  const targetRef = useRef(new THREE.Vector3())
+  const tempVec1Ref = useRef(new THREE.Vector3())
+  const tempVec2Ref = useRef(new THREE.Vector3())
+  
+  // Load GLB models
+  const { scene: playerScene } = useGLTF(PLAYER_MODEL_PATH)
+  const { scene: racquetScene } = useGLTF(RACQUET_MODEL_PATH)
+  
+  // Racquet rigid body ref for kinematic updates
+  const racquetBodyRef = useRef<RapierRigidBody>(null)
+  
+  // Clone and apply materials preserving mat_a = fill, mat_b = accent
+  const playerModel = useMemo(() => {
+    const cloned = playerScene.clone()
+    let accentMeshes = 0
+
+    cloned.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        const originalMat = Array.isArray(child.material) ? child.material[0] : child.material
+        const matName = originalMat?.name?.toLowerCase() ?? ''
+
+        if (matName === GLB_ACCENT_MATERIAL) {
+          accentMeshes++
+          child.material = new THREE.MeshBasicMaterial({
+            color: color,
+            transparent: false,
+            side: THREE.DoubleSide,
+          })
+        } else {
+          child.material = new THREE.MeshBasicMaterial({
+            color: color,
+            transparent: true,
+            opacity: displayAlpha(0.15),
+            side: THREE.DoubleSide,
+          })
+        }
+      }
+    })
+
+    if (accentMeshes === 0) {
+      console.warn(
+        `Player: no mesh used "${GLB_ACCENT_MATERIAL}"; athlete edges will be missing.`
+        + ' Re-run `npm run measure:glb` and update GLB_ACCENT_MATERIAL.'
+      )
+    }
+
+    return cloned
+  }, [playerScene, color])
+
+  const racquetModel = useMemo(() => {
+    const cloned = racquetScene.clone()
+    let accentMeshes = 0
+
+    cloned.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        const originalMat = Array.isArray(child.material) ? child.material[0] : child.material
+        const matName = originalMat?.name?.toLowerCase() ?? ''
+
+        if (matName === GLB_ACCENT_MATERIAL) {
+          accentMeshes++
+          child.material = new THREE.MeshBasicMaterial({
+            color,
+            transparent: false,
+            side: THREE.DoubleSide,
+          })
+        } else {
+          child.material = new THREE.MeshBasicMaterial({
+            color,
+            transparent: true,
+            opacity: displayAlpha(0.2),
+            side: THREE.DoubleSide,
+          })
+        }
+      }
+    })
+
+    if (accentMeshes === 0) {
+      console.warn(
+        `Racquet: no mesh used "${GLB_ACCENT_MATERIAL}"; edges will be missing.`
+        + ' Re-run `npm run measure:glb` and update GLB_ACCENT_MATERIAL.'
+      )
+    }
+
+    return cloned
+  }, [racquetScene, color])
+  
+  const aim = useAim()
+
+  useFrame((_, delta) => {
+    if (isControllable) {
+      useInputStore.getState().tickAim(Math.min(delta, 0.1))
+    }
+    if (!groupRef.current) return
+    
+    const target = targetRef.current
+    let currentSpeed: number
+
+    // Authoritative pose: live ref (AI/demo) or props for held serve; controllable
+    // free movement owns currentPos — never snap from a stale React prop.
+    const livePose = livePositionRefLocal.current?.current
+    if (holdPosition || !isControllable) {
+      if (livePose) {
+        currentPos.current.set(livePose[0], livePose[1], livePose[2])
+      } else {
+        currentPos.current.set(position[0], position[1], position[2])
+      }
+      if (holdPosition) velocity.current.set(0, 0, 0)
+    }
+    
+    const liveChaseTarget = targetPositionRefLocal.current?.current ?? targetPosition
+    const heldPose = livePose ?? position
+
+    if (holdPosition) {
+      target.set(...heldPose)
+      currentSpeed = 0
+    } else if (liveChaseTarget) {
+      // Chase (Shift) or soft receive assist — speed comes from Scene.
+      target.set(...liveChaseTarget)
+      currentSpeed = moveSpeedRefLocal.current?.current ?? MOVEMENT.CHASE_SPEED
+    } else if (isRecovering || movementPhase === 'recovering') {
+      target.copy(T_POSITION)
+      currentSpeed = MOVEMENT.RECOVERY_SPEED
+    } else if (isControllable) {
+      target.copy(T_POSITION)
+      currentSpeed = MOVEMENT.RECOVERY_SPEED * 0.5
+    } else {
+      target.set(...(livePose ?? position))
+      currentSpeed = MOVEMENT.BASE_SPEED
+    }
+    
+    const distanceToTarget = currentPos.current.distanceTo(target)
+    
+    // --- SPLIT-STEP LOGIC ---
+    if (chaseStartTime && !splitStepActive && movementPhase !== 'recovering') {
+      const timeSinceChaseStart = Date.now() - chaseStartTime
+      if (timeSinceChaseStart < MOVEMENT.SPLIT_STEP_DURATION) {
+        setSplitStepActive(true)
+        const progress = timeSinceChaseStart / MOVEMENT.SPLIT_STEP_DURATION
+        const bobAmount = Math.sin(progress * Math.PI) * 0.15
+        setSplitStepScale(1 + bobAmount)
+      } else if (splitStepActive) {
+        setSplitStepActive(false)
+        setSplitStepScale(1)
+      }
+    } else if (!chaseStartTime && splitStepActive) {
+      setSplitStepActive(false)
+      setSplitStepScale(1)
+    }
+    
+    // --- ACCELERATION CURVE ---
+    let speedMultiplier = 1
+    if (chaseStartTime && liveChaseTarget) {
+      const chaseTime = (Date.now() - chaseStartTime) / 1000
+      if (chaseTime > MOVEMENT.SPLIT_STEP_DURATION / 1000) {
+        const adjustedTime = chaseTime - MOVEMENT.SPLIT_STEP_DURATION / 1000
+        speedMultiplier = 1 - Math.exp(-adjustedTime * 5)
+      } else {
+        speedMultiplier = 0.1
+      }
+    }
+    
+    // --- DECELERATION NEAR TARGET ---
+    if (distanceToTarget < MOVEMENT.DECELERATION_DISTANCE && liveChaseTarget) {
+      const decelFactor = distanceToTarget / MOVEMENT.DECELERATION_DISTANCE
+      speedMultiplier *= decelFactor
+    }
+    
+    // --- LUNGE OFFSET ---
+    // Must use distance to the *ball*, not the movement target. When idle/recovering the
+    // target is the T, so distanceToTarget ≈ 0 and every charge looked like a dive.
+    const lungeOffset = tempVec1Ref.current
+    lungeOffset.set(0, 0, 0)
+    if (isCharging && ballPosition) {
+      tempVec2Ref.current.copy(ballPosition).sub(currentPos.current)
+      tempVec2Ref.current.y = 0
+      const distToBall = tempVec2Ref.current.length()
+      if (distToBall > 0.1 && distToBall < MOVEMENT.LUNGE_DISTANCE) {
+        tempVec2Ref.current.normalize()
+        lungeOffset.copy(tempVec2Ref.current).multiplyScalar(MOVEMENT.LUNGE_OFFSET * chargeLevel)
+      }
+    }
+    
+    // --- APPLY MOVEMENT ---
+    const effectiveSpeed = currentSpeed * speedMultiplier
+    const direction = tempVec2Ref.current.copy(target).sub(currentPos.current)
+    direction.y = 0
+    
+    if (direction.length() > 0.01) {
+      direction.normalize()
+      direction.multiplyScalar(effectiveSpeed)
+      velocity.current.lerp(direction, 0.1)
+    } else {
+      velocity.current.multiplyScalar(0.9)
+    }
+    
+    tempVec2Ref.current.copy(velocity.current).multiplyScalar(delta)
+    currentPos.current.add(tempVec2Ref.current)
+    
+    const displayPos = tempVec2Ref.current.copy(currentPos.current).add(lungeOffset)
+    
+    // --- CLAMP TO COURT (full floor walkable) ---
+    displayPos.x = THREE.MathUtils.clamp(
+      displayPos.x, 
+      -COURT.width / 2 + ATHLETE_INSET, 
+      COURT.width / 2 - ATHLETE_INSET
+    )
+    displayPos.z = THREE.MathUtils.clamp(
+      displayPos.z, 
+      -COURT.length / 2 + ATHLETE_INSET,
+      COURT.length / 2 - ATHLETE_INSET
+    )
+    displayPos.y = 0.01
+    
+    currentPos.current.x = THREE.MathUtils.clamp(
+      currentPos.current.x,
+      -COURT.width / 2 + ATHLETE_INSET,
+      COURT.width / 2 - ATHLETE_INSET
+    )
+    currentPos.current.z = THREE.MathUtils.clamp(
+      currentPos.current.z,
+      -COURT.length / 2 + ATHLETE_INSET,
+      COURT.length / 2 - ATHLETE_INSET
+    )
+    
+    groupRef.current.position.copy(displayPos)
+
+    if (isControllable && onPositionFrameRef.current) {
+      onPositionFrameRef.current(
+        currentPos.current.x,
+        currentPos.current.y,
+        currentPos.current.z,
+      )
+    }
+    
+    // --- PLAYER ROTATION (aim-controlled for controllable player; charge is power only) ---
+    if (isControllable) {
+      let targetRotation = AIM_START_ANGLE
+      const liveAim = useInputStore.getState().aim
+
+      if (isCharging) {
+        targetRotation = aimToPlayerRotation(liveAim)
+      } else if (!isSwinging) {
+        targetRotation = AIM_START_ANGLE
+      } else {
+        targetRotation = currentRotation.current
+      }
+
+      currentRotation.current = THREE.MathUtils.lerp(
+        currentRotation.current,
+        targetRotation,
+        ROTATION_SMOOTHING
+      )
+    } else {
+      // Non-controllable player (AI) - face the ball for shot direction
+      if (ballPosition) {
+        tempVec1Ref.current.copy(ballPosition).sub(currentPos.current)
+        tempVec1Ref.current.y = 0
+        if (tempVec1Ref.current.length() > 0.1) {
+          const targetRotation = Math.atan2(tempVec1Ref.current.x, -tempVec1Ref.current.z)
+          currentRotation.current = THREE.MathUtils.lerp(
+            currentRotation.current,
+            targetRotation,
+            0.1
+          )
+        }
+      }
+    }
+    
+    if (rotationRef) {
+      rotationRef.current = currentRotation.current
+    }
+    
+    // Apply rotation to pyramid with stance adjustment
+    if (pyramidRef.current) {
+      pyramidRef.current.rotation.y = currentRotation.current + stanceBodyRotation.current
+    }
+    
+    // --- VISUAL EFFECTS ---
+    let scaleEffect = splitStepScale
+    
+    if (isCharging && chargePhase !== 'none') {
+      switch (chargePhase) {
+        case 'racquetPrep':
+          scaleEffect *= 0.95
+          break
+        case 'bodyCoil':
+          scaleEffect *= 0.9 + Math.sin(Date.now() * 0.008) * 0.03
+          break
+        case 'powerLoad':
+          scaleEffect *= 0.88 + Math.sin(Date.now() * 0.015) * 0.05
+          break
+      }
+    }
+    
+    // Uniform charge/split-step scale on the parent only — the child's ATHLETE_MODEL_SCALE
+    // stays non-uniform (parent × child). Do not setScalar on the primitive.
+    if (pyramidRef.current) {
+      pyramidRef.current.scale.setScalar(scaleEffect)
+    }
+    
+    // --- RACQUET POSITIONING WITH SWING ANIMATION ---
+    // Use the new swing animation system for proper squash-like racquet movement
+    
+    // Calculate current swing state using the animation system
+    const ballPosForSwing = ballPosition ?? DEFAULT_BALL_POSITION
+    const swingState = calculateSwingState(
+      isCharging,
+      chargeStartTime,
+      isSwinging,
+      swingStartTime,
+      ballPosForSwing,
+      currentPos.current
+    )
+    
+    // Store swing state for hit detection
+    currentSwingState.current = swingState
+    
+    // Calculate racquet transform based on swing state
+    // With new rotation system, racquet follows player rotation
+    // Always uses forehand animation - player facing determines shot direction
+    const racquetTransform = calculateRacquetTransform(
+      swingState,
+      currentRotation.current
+    )
+    
+    // Apply stance body rotation to player (subtle rotation for forehand/backhand)
+    const targetStanceRotation = racquetTransform.bodyRotation
+    stanceBodyRotation.current = THREE.MathUtils.lerp(
+      stanceBodyRotation.current,
+      targetStanceRotation,
+      0.15
+    )
+    
+    // Set racquet world position (player position + offset)
+    racquetPositionRef.current.copy(displayPos).add(racquetTransform.offset)
+    
+    // Set racquet rotation quaternion
+    racquetQuaternionRef.current.copy(racquetTransform.rotation)
+    
+    // Mark racquet as ready after first position calculation
+    if (!racquetReady) {
+      setRacquetReady(true)
+    }
+    
+    // Update racquet RigidBody kinematic position and rotation
+    if (racquetBodyRef.current) {
+      racquetBodyRef.current.setNextKinematicTranslation({
+        x: racquetPositionRef.current.x,
+        y: racquetPositionRef.current.y,
+        z: racquetPositionRef.current.z
+      })
+      
+      racquetBodyRef.current.setNextKinematicRotation({
+        x: racquetQuaternionRef.current.x,
+        y: racquetQuaternionRef.current.y,
+        z: racquetQuaternionRef.current.z,
+        w: racquetQuaternionRef.current.w
+      })
+    }
+  })
+  
+  // Handle racquet collision with ball - use refs to avoid stale closures
+  // Uses new swing animation system for timing-based hit detection
+  const handleRacquetIntersection = (payload: { other: { rigidBodyObject?: { name?: string } | null } }) => {
+    const otherName = payload.other.rigidBodyObject?.name
+    const currentlySwinging = isSwingingRef.current
+    const hitCallback = onRacquetHitRef.current
+    const power = swingPowerRef.current
+    const swingState = currentSwingState.current
+    
+    const canHit = currentlySwinging && isInSwingHitWindow(swingState)
+    
+    if (DEBUG) console.log('Racquet intersection:', otherName,
+      'phase:', swingState?.phase,
+      'progress:', swingState?.progress?.toFixed(2),
+      'canHit:', canHit,
+      'isControllable:', isControllable)
+    
+    // Trigger hit if colliding with ball AND in valid hit phase
+    if (otherName === 'ball' && canHit && hitCallback) {
+      const whoHit = isControllable ? 'PLAYER' : 'AI'
+      const phaseInfo = swingState?.phase || 'unknown'
+      if (DEBUG) console.log(`${whoHit} RACQUET HIT! Power: ${(power * 100).toFixed(0)}%, Phase: ${phaseInfo}`)
+      // Pass racquet world position, player rotation, and player position for hit accuracy calculation
+      hitCallback(
+        racquetPositionRef.current.clone(),
+        currentRotation.current,
+        currentPos.current.clone()
+      )
+    }
+  }
+
+  return (
+    <>
+      {/* No `position` prop — R3F would re-apply it on every Scene re-render and
+          fight useFrame movement (body frozen, racquet still hittable). */}
+      <group ref={groupRef}>
+        {/* Player pyramid */}
+        <group ref={pyramidRef}>
+          <primitive
+            object={playerModel}
+            position={[0, 0, ATHLETE_MODEL_Z_OFFSET]}
+            scale={ATHLETE_MODEL_SCALE} // [1,1,1] — authored size
+          />
+        </group>
+        
+        {/* Charge indicator ring - only shows when it's this player's turn AND charging */}
+        {isCurrentStriker && isCharging && (
+          <ChargeIndicator aim={aim} power={chargeLevel} color={color} />
+        )}
+        
+        {/* Split-step indicator */}
+        {splitStepActive && (
+          <SplitStepIndicator color={color} />
+        )}
+        
+        {/* Shot type text on ground plane (same as charge indicator) */}
+        {isCurrentStriker && isCharging && currentShotName && (
+          <Text
+            position={[0, 0.03, 0]}
+            rotation={[-Math.PI / 2, 0, 0]}
+            fontSize={0.35}
+            color={color}
+            anchorX="center"
+            anchorY="middle"
+            outlineWidth={0.015}
+            outlineColor={HEX.void}
+          >
+            {currentShotName.toUpperCase()}
+          </Text>
+        )}
+      </group>
+      
+      {/* Racquet - primitive geometry with physics sensor and swing animation */}
+      {racquetReady && (
+        <RigidBody
+          ref={racquetBodyRef}
+          type="kinematicPosition"
+          colliders={false}
+          name={isControllable ? 'playerRacquet' : 'opponentRacquet'}
+          position={[racquetPositionRef.current.x, racquetPositionRef.current.y, racquetPositionRef.current.z]}
+          quaternion={[
+            racquetQuaternionRef.current.x,
+            racquetQuaternionRef.current.y,
+            racquetQuaternionRef.current.z,
+            racquetQuaternionRef.current.w
+          ]}
+          onIntersectionEnter={handleRacquetIntersection}
+        >
+          {/* Sensor collider for hit detection - enlarged for more forgiving collision */}
+          <CuboidCollider args={[0.4, 0.35, 0.3]} sensor />
+          
+          <primitive object={racquetModel} rotation={[0, RACQUET_FACE_YAW, 0]} />
+        </RigidBody>
+      )}
+    </>
+  )
+}
+
+/**
+ * Aim arc + power ring during charge. Outer ring = available aim range / current aim;
+ * inner ring fill = charge power (independent of aim).
+ */
+function ChargeIndicator({
+  aim,
+  power,
+  color,
+}: {
+  aim: number
+  power: number
+  color: string
+}) {
+  const fullArcLength = AIM_ARC_RANGE
+  const quantisedAim = Math.round(aim * CHARGE_ARC_STEPS) / CHARGE_ARC_STEPS
+  const quantisedPower = Math.round(power * CHARGE_ARC_STEPS) / CHARGE_ARC_STEPS
+  const aimArcLength = Math.max(fullArcLength * quantisedAim, 0.001)
+  const powerArcLength = Math.max(fullArcLength * quantisedPower, 0.001)
+  const startOffset = -Math.PI / 2
+
+  const aimInner = PLAYER_SIZE * 1.6
+  const aimOuter = PLAYER_SIZE * 2.0
+  const powerInner = PLAYER_SIZE * 1.15
+  const powerOuter = PLAYER_SIZE * 1.45
+  const needleLength = aimOuter + PLAYER_SIZE * 0.4
+
+  return (
+    <group position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <mesh>
+        <ringGeometry args={[aimInner, aimOuter, 32, 1, startOffset, fullArcLength]} />
+        <meshBasicMaterial
+          color={color}
+          transparent
+          opacity={displayAlpha(0.15)}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+
+      <mesh>
+        <ringGeometry args={[aimInner, aimOuter, 32, 1, startOffset, aimArcLength]} />
+        <meshBasicMaterial
+          color={color}
+          transparent
+          opacity={displayAlpha(0.7)}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+
+      <mesh>
+        <ringGeometry args={[powerInner, powerOuter, 32, 1, startOffset, fullArcLength]} />
+        <meshBasicMaterial
+          color={color}
+          transparent
+          opacity={displayAlpha(0.12)}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+
+      <mesh>
+        <ringGeometry args={[powerInner, powerOuter, 32, 1, startOffset, powerArcLength]} />
+        <meshBasicMaterial
+          color={color}
+          transparent
+          opacity={displayAlpha(0.55)}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+
+      <mesh rotation={[0, 0, startOffset + aimArcLength]}>
+        <planeGeometry args={[PLAYER_SIZE * 0.32, needleLength]} />
+        <meshBasicMaterial
+          color={color}
+          transparent
+          opacity={displayAlpha(0.9)}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+
+      <mesh>
+        <circleGeometry args={[0.1, 16]} />
+        <meshBasicMaterial
+          color={color}
+          transparent
+          opacity={displayAlpha(0.5)}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+    </group>
+  )
+}
+
+function SplitStepIndicator({ color }: { color: string }) {
+  return (
+    <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <circleGeometry args={[PLAYER_SIZE * 1.2, 6]} />
+      <meshBasicMaterial
+        color={color}
+        transparent
+        opacity={displayAlpha(0.15)}
+        side={THREE.DoubleSide}
+      />
+    </mesh>
+  )
+}
+
+
+// Preload models
+useGLTF.preload(PLAYER_MODEL_PATH)
+useGLTF.preload(RACQUET_MODEL_PATH)
+
+export { PLAYER_SIZE, MOVEMENT }

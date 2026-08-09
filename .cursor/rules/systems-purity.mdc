@@ -1,0 +1,38 @@
+---
+description: Purity and shape conventions for the src/systems layer.
+globs: src/systems/**/*.ts
+---
+
+# systems/ is the pure layer
+
+Everything here is a framework-free function library. Game logic that can be expressed
+without React should live here, not in a component or hook.
+
+## Rules
+
+- No imports from `react`, `@react-three/fiber`, `@react-three/rapier`, or
+  `../stores/gameStore`. `three` is allowed, but only for math types
+  (`Vector3`, `Quaternion`, `Euler`) — never scene objects, materials, or renderers.
+- Export named functions with explicit return types. No default exports.
+- Functions take their inputs as parameters and return new values. Do not mutate
+  arguments; do not read or write module-level mutable state.
+- Given the same inputs, a function returns the same output. Anything time-dependent
+  takes the timestamp or delta as a parameter rather than calling `Date.now()`.
+- Prefer a single object parameter once a function takes more than three arguments
+  (see `detectShotType` in `shotTypes.ts`).
+- Export the types alongside the functions that use them; `import type` for type-only imports.
+
+## Domain accuracy
+
+`scoring.ts` implements official WSF/PARS rules (PARS-11, win by 2 at 10–10, best of 3,
+service-box alternation). When changing rule behaviour, cite the governing rule in a
+comment the way the existing code does, and update the comment with the code.
+
+Physics tuning in `shotContext.ts`, `hitAccuracy.ts`, and `swingAnimation.ts` is
+deliberately unrealistic in places (light ball, oversized hit zone) for game feel. Treat
+those constants as tuned values, not bugs.
+
+## Style
+
+No semicolons, single quotes, 2-space indent. Relative imports only — the `@/*` alias
+has no Vite counterpart and will fail at runtime.

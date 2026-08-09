@@ -1,0 +1,367 @@
+import * as THREE from 'three'
+import { COURT } from './court'
+
+/**
+ * DYNAMIC SHOT CONTEXT SYSTEM
+ * 
+ * Automatically determines shot type and calculates appropriate angles based on:
+ * - Ball height relative to player (low = lob, high = kill)
+ * - Player position on court (near walls = boast opportunities)
+ * - Hit accuracy (center = clean, edge = mishit)
+ * - Player rotation (general aiming direction)
+ * 
+ * Shot types based on real squash:
+ * - Drive: Straight to front wall
+ * - Cross-court: Angled across to front wall
+ * - Boast: Sidewall first, then front wall
+ * - Drop: Soft shot to front corner
+ * - Lob: High arc to back court
+ * - Kill: Hard downward shot
+ */
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
+export type BallHeight = 'low' | 'medium' | 'high'
+export type CourtPosition = 'front' | 'mid' | 'back'
+export type NearWall = 'left' | 'right' | 'none'
+export type ShotType = 'drive' | 'crossCourt' | 'boast' | 'drop' | 'lob' | 'kill'
+
+export interface ShotContext {
+  /** Ball height relative to comfortable hitting zone */
+  ballHeight: BallHeight
+  /** Player position on court (front/mid/back) */
+  courtPosition: CourtPosition
+  /** Whether player is near a sidewall */
+  nearWall: NearWall
+  /** Hit accuracy from hit zone system (0-1) */
+  hitAccuracy: number
+  /** Player rotation in radians */
+  playerRotation: number
+  /** Charge power level (0-1) */
+  chargePower: number
+  /** Raw ball Y position for precise calculations */
+  ballY: number
+  /** Raw player X position for sidewall detection */
+  playerX: number
+  /** Raw player Z position for court zone detection */
+  playerZ: number
+}
+
+export interface ShotAngles {
+  /** Horizontal angle component (left/right deviation) */
+  horizontal: number
+  /** Vertical angle component (up/down) */
+  vertical: number
+}
+
+export interface ShotResult {
+  /** Detected shot type */
+  type: ShotType
+  /** Normalized direction vector */
+  direction: THREE.Vector3
+  /** Power multiplier (0.5-1.5) */
+  powerMultiplier: number
+  /** Display name for UI/logging */
+  displayName: string
+}
+
+// ============================================================================
+// CONFIGURATION
+// ============================================================================
+
+/** Height thresholds for ball position classification */
+const HEIGHT_THRESHOLDS = {
+  low: 0.4,      // Below knee - must lift
+  high: 1.2,     // Above shoulder - can hit down
+} as const
+
+/** Court zone thresholds (Z position) */
+const COURT_ZONES = {
+  front: -2.0,   // Z < -2.0 = front court
+  back: 2.0,     // Z > 2.0 = back court
+} as const
+
+/** Distance from sidewall to enable boast shots */
+const SIDEWALL_THRESHOLD = 1.2  // meters
+
+/** Base angles for each shot type */
+const BASE_SHOT_ANGLES: Record<ShotType, ShotAngles> = {
+  drive: { horizontal: 0, vertical: 0.12 },
+  crossCourt: { horizontal: 0.35, vertical: 0.14 },
+  boast: { horizontal: 0.7, vertical: 0.18 },
+  drop: { horizontal: 0.08, vertical: 0.25 },
+  lob: { horizontal: 0.05, vertical: 0.55 },
+  kill: { horizontal: 0, vertical: -0.08 },
+}
+
+/** Power multipliers for each shot type */
+const SHOT_POWER_MULTIPLIERS: Record<ShotType, { base: number; chargeScale: number }> = {
+  drive: { base: 0.8, chargeScale: 0.4 },      // 0.8-1.2 based on charge
+  crossCourt: { base: 0.75, chargeScale: 0.35 },
+  boast: { base: 0.7, chargeScale: 0.3 },
+  drop: { base: 0.3, chargeScale: 0.15 },      // Soft shot
+  lob: { base: 0.6, chargeScale: 0.25 },
+  kill: { base: 0.9, chargeScale: 0.5 },       // Power shot
+}
+
+/** Shot type display names */
+const SHOT_DISPLAY_NAMES: Record<ShotType, string> = {
+  drive: 'DRIVE',
+  crossCourt: 'CROSS-COURT',
+  boast: 'BOAST',
+  drop: 'DROP',
+  lob: 'LOB',
+  kill: 'KILL',
+}
+
+// ============================================================================
+// CONTEXT ANALYSIS
+// ============================================================================
+
+/**
+ * Analyze the current shot context based on player and ball positions
+ */
+export function analyzeShotContext(
+  playerPos: THREE.Vector3,
+  ballPos: THREE.Vector3,
+  playerRotation: number,
+  chargePower: number,
+  hitAccuracy: number
+): ShotContext {
+  // Classify ball height
+  let ballHeight: BallHeight = 'medium'
+  if (ballPos.y < HEIGHT_THRESHOLDS.low) {
+    ballHeight = 'low'
+  } else if (ballPos.y > HEIGHT_THRESHOLDS.high) {
+    ballHeight = 'high'
+  }
+
+  // Classify court position (based on player Z)
+  let courtPosition: CourtPosition = 'mid'
+  if (playerPos.z < COURT_ZONES.front) {
+    courtPosition = 'front'
+  } else if (playerPos.z > COURT_ZONES.back) {
+    courtPosition = 'back'
+  }
+
+  // Check if near sidewall
+  const halfWidth = COURT.width / 2
+  let nearWall: NearWall = 'none'
+  if (playerPos.x > halfWidth - SIDEWALL_THRESHOLD) {
+    nearWall = 'right'
+  } else if (playerPos.x < -halfWidth + SIDEWALL_THRESHOLD) {
+    nearWall = 'left'
+  }
+
+  return {
+    ballHeight,
+    courtPosition,
+    nearWall,
+    hitAccuracy,
+    playerRotation,
+    chargePower,
+    ballY: ballPos.y,
+    playerX: playerPos.x,
+    playerZ: playerPos.z,
+  }
+}
+
+// ============================================================================
+// SHOT SELECTION
+// ============================================================================
+
+/**
+ * Determine shot type based on context
+ * 
+ * Priority:
+ * 1. Ball height forces certain shots (low = lob, high = kill opportunity)
+ * 2. Court position + rotation enables special shots (boast, drop)
+ * 3. Default to drive or cross-court based on rotation
+ */
+export function selectShotType(context: ShotContext): ShotType {
+  const { ballHeight, courtPosition, nearWall, playerRotation, chargePower } = context
+
+  // Normalize rotation to 0-2π range
+  const normalizedRotation = ((playerRotation % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)
+  
+  // Determine if player is rotated toward a sidewall
+  // 0 = facing front wall (-Z), π/2 = facing right (+X), π = facing back, 3π/2 = facing left (-X)
+  const facingRight = normalizedRotation > Math.PI / 4 && normalizedRotation < 3 * Math.PI / 4
+  const facingLeft = normalizedRotation > 5 * Math.PI / 4 && normalizedRotation < 7 * Math.PI / 4
+
+  // LOW BALL: Must lift - lob or drive with upward angle
+  if (ballHeight === 'low') {
+    // Low ball in back court = defensive lob
+    if (courtPosition === 'back') {
+      return 'lob'
+    }
+    // Low ball near sidewall = boast is natural
+    if (nearWall !== 'none') {
+      return 'boast'
+    }
+    // Otherwise drive with forced upward angle (handled in angle calculation)
+    return 'drive'
+  }
+
+  // HIGH BALL: Kill opportunity if in front court
+  if (ballHeight === 'high' && courtPosition === 'front') {
+    return 'kill'
+  }
+
+  // NEAR SIDEWALL + ROTATED TOWARD IT: Boast
+  if (nearWall === 'right' && facingRight) {
+    return 'boast'
+  }
+  if (nearWall === 'left' && facingLeft) {
+    return 'boast'
+  }
+
+  // FRONT COURT + soft touch: drop. Floor is `chargeDurationToPower`'s MIN_POWER (0.3),
+  // so `< 0.3` never fired and every front-court tap read as DRIVE.
+  if (courtPosition === 'front' && chargePower <= 0.4) {
+    return 'drop'
+  }
+
+  // ROTATION-BASED: Cross-court vs drive
+  // Angular distance from facing the front wall, so a rotation just under 2π counts as
+  // slightly off-centre rather than nearly a full turn. π/8 ≈ aim 0.11 on the 200° arc.
+  const rotationFromCenter = Math.min(normalizedRotation, 2 * Math.PI - normalizedRotation)
+  if (rotationFromCenter > Math.PI / 8 && rotationFromCenter < 5 * Math.PI / 6) {
+    return 'crossCourt'
+  }
+
+  // Default: Drive
+  return 'drive'
+}
+
+// ============================================================================
+// ANGLE CALCULATION
+// ============================================================================
+
+/**
+ * Calculate shot angles based on shot type and context
+ */
+export function calculateShotAngles(
+  shotType: ShotType,
+  context: ShotContext
+): ShotAngles {
+  // Start with base angles for this shot type
+  const angles = { ...BASE_SHOT_ANGLES[shotType] }
+
+  // Apply ball height modifiers
+  if (context.ballHeight === 'low') {
+    // Must lift the ball - increase vertical angle
+    angles.vertical += 0.25
+    // Prevent downward shots
+    angles.vertical = Math.max(angles.vertical, 0.2)
+  } else if (context.ballHeight === 'high') {
+    // Can hit down - decrease vertical angle
+    angles.vertical -= 0.12
+    // Kill shots can go negative
+    if (shotType !== 'kill') {
+      angles.vertical = Math.max(angles.vertical, 0)
+    }
+  }
+
+  // Apply accuracy modifiers (poor accuracy = deviation)
+  if (context.hitAccuracy < 0.7) {
+    const inaccuracyFactor = 1 - context.hitAccuracy
+    // Random horizontal deviation based on inaccuracy
+    angles.horizontal += (Math.random() - 0.5) * inaccuracyFactor * 0.4
+    // Slight vertical deviation too
+    angles.vertical += (Math.random() - 0.5) * inaccuracyFactor * 0.15
+  }
+
+  // Boast bias in local space; world aim comes from `playerRotation` in `calculateShot`.
+  if (shotType === 'boast') {
+    if (context.nearWall === 'left') {
+      angles.horizontal = -Math.abs(angles.horizontal) - 0.2
+    } else if (context.nearWall === 'right') {
+      angles.horizontal = Math.abs(angles.horizontal) + 0.2
+    }
+  }
+
+  return angles
+}
+
+/**
+ * Calculate power multiplier based on shot type and charge
+ */
+export function calculatePowerMultiplier(
+  shotType: ShotType,
+  chargePower: number
+): number {
+  const config = SHOT_POWER_MULTIPLIERS[shotType]
+  return config.base + chargePower * config.chargeScale
+}
+
+// ============================================================================
+// MAIN CALCULATION
+// ============================================================================
+
+const UP = new THREE.Vector3(0, 1, 0)
+
+/**
+ * Calculate complete shot result from context
+ */
+export function calculateShot(context: ShotContext): ShotResult {
+  // Select shot type based on context
+  const shotType = selectShotType(context)
+
+  // Calculate angles
+  const angles = calculateShotAngles(shotType, context)
+
+  // Calculate power
+  const powerMultiplier = calculatePowerMultiplier(shotType, context.chargePower)
+
+  // Local aim toward the front wall, then yaw by the player's facing (aim control).
+  const direction = new THREE.Vector3(angles.horizontal, angles.vertical, -1)
+    .normalize()
+    .applyAxisAngle(UP, context.playerRotation)
+
+  // Do not let a shot leave aimed at the back wall behind the striker.
+  if (direction.z > 0) {
+    direction.z = -Math.min(0.05, Math.abs(direction.z) + 0.05)
+    direction.normalize()
+  }
+
+  return {
+    type: shotType,
+    direction,
+    powerMultiplier,
+    displayName: SHOT_DISPLAY_NAMES[shotType],
+  }
+}
+
+// ============================================================================
+// VELOCITY CALCULATION
+// ============================================================================
+
+export interface ShotVelocity {
+  /** Normalized direction the ball leaves the racquet in */
+  direction: THREE.Vector3
+  /** Speed the ball leaves the racquet at, in m/s */
+  speed: number
+}
+
+/**
+ * Convert a shot result into the velocity the ball leaves the racquet with.
+ *
+ * A strike replaces the ball's velocity rather than adding to it, so this returns a
+ * speed in m/s and not an impulse — the two differ by the ball mass and are easy to
+ * confuse, which is why the name says velocity.
+ *
+ * @param shot - Shot result from calculateShot
+ * @param baseSpeed - Base speed in m/s, scaled by the shot type's power multiplier
+ */
+export function calculateVelocityFromShot(
+  shot: ShotResult,
+  baseSpeed: number
+): ShotVelocity {
+  return {
+    direction: shot.direction.clone(),
+    speed: baseSpeed * shot.powerMultiplier,
+  }
+}

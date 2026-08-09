@@ -1,0 +1,37 @@
+import type { SwingState } from './swingAnimation'
+
+/** Horizontal reach for proximity strikes (player / AI) — arcade forgiveness. */
+export const STRIKE_RANGE_M = 2.15
+
+/** Ball height band that still counts as reachable (m). */
+export const STRIKE_Y_MIN = 0.05
+export const STRIKE_Y_MAX = 2.5
+
+/**
+ * Planar (XZ) strike range. Full 3D distance made high balls feel unreachable —
+ * a ball at y=1.4 with the athlete at y≈0 already burns most of a 1.5 m budget.
+ */
+export function isInStrikeRange(
+  player: { x: number, y: number, z: number },
+  ball: { x: number, y: number, z: number },
+  rangeM: number = STRIKE_RANGE_M,
+): boolean {
+  if (ball.y < STRIKE_Y_MIN || ball.y > STRIKE_Y_MAX) return false
+  const dx = ball.x - player.x
+  const dz = ball.z - player.z
+  return Math.hypot(dx, dz) <= rangeM
+}
+
+/**
+ * Forgiving swing contact window for racquet-sensor hits.
+ * Covers late forward through mid follow-through (~most of the visible swing).
+ */
+export function isInSwingHitWindow(swingState: SwingState | null | undefined): boolean {
+  if (!swingState?.isSwinging) return false
+  const { phase, progress } = swingState
+  // Early forward through late follow-through — late Space releases still connect.
+  if (phase === 'forward' && progress >= 0.05) return true
+  if (phase === 'contact') return true
+  if (phase === 'followThrough' && progress <= 0.8) return true
+  return false
+}
