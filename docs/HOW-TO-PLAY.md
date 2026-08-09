@@ -1,8 +1,14 @@
-# How to play sq_
+<h1 align="center">
+  <img src="../public/sq-lockup.svg" alt="sq_" height="64" />
+</h1>
 
+<p align="center">
 <!-- x-release-please-start-version -->
-**Version:** 0.1.0 (alpha)
+<strong>Version:</strong> 0.1.0
 <!-- x-release-please-end -->
+</p>
+
+<p align="center"><strong>How to play</strong></p>
 
 See also [README](../README.md).
 
@@ -30,7 +36,7 @@ Hold longer for more power (roughly 120–750 ms). Short taps advance menus (sta
 - **Mouse:** hold **right button**
 - **Touch:** hold the **left** half of the screen
 
-Chase moves you toward the ball. Timing chase with your shot is the core loop — and the area still getting the most design work in `0.1.x`.
+Chase moves you toward the ball. Timing chase with your shot is the core loop.
 
 ## Scoring (short)
 
@@ -45,9 +51,3 @@ When a point ends, use Button A to continue. After a game, Button A starts the n
 - Watch the one-shot teach prompts on your first serve and return
 - Neon shot callouts flash the shot type after a clean hit
 - Append `?nobloom` to compare the scene without bloom; `?orbit` enables debug camera orbit when available
-
-## What this alpha is / isn’t
-
-**Is:** a readable demo of court, ball flight, AI rallies, and neon presentation.
-
-**Isn’t:** a finished controller feel or production UX. Expect movement and HUD work before this is pitch-ready.

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 136 64" role="img" aria-label="sq_">
+  <title>sq_</title>
+  <desc>Wordmark: geometric sq letters with square mark (ink frame, orange triangle) on void plate for light and dark hosts.</desc>
+  <!-- Void plate so ink strokes stay legible on GitHub light README -->
+  <rect width="136" height="64" fill="#070a0e"/>
+  <text
+    x="12"
+    y="46"
+    font-family="Outfit, Bahnschrift, 'Segoe UI', Arial Black, sans-serif"
+    font-size="44"
+    font-weight="800"
+    letter-spacing="-1.4"
+    fill="#eef6f7"
+  >sq</text>
+  <g transform="translate(88 16) scale(1.05)" stroke-linejoin="miter" stroke-linecap="butt" fill="none">
+    <rect x="3" y="3" width="26" height="26" stroke="#eef6f7" stroke-width="4.25"/>
+    <path d="M3 16 H29" stroke="#eef6f7" stroke-width="4.25"/>
+    <path d="M16 16 V29" stroke="#eef6f7" stroke-width="4.25"/>
+    <path d="M3 29 L16 3 L29 29 Z" stroke="#ff6600" stroke-width="2.125"/>
+  </g>
+</svg>

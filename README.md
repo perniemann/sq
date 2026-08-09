@@ -1,18 +1,14 @@
-# sq_
+<h1 align="center">
+  <img src="public/sq-lockup.svg" alt="sq_" height="72" />
+</h1>
 
 <p align="center">
-  <img src="public/sq-logo.svg" alt="sq_ mark" width="96" height="96" />
+<!-- x-release-please-start-version -->
+<strong>Version:</strong> 0.1.0
+<!-- x-release-please-end -->
 </p>
 
-<!-- x-release-please-start-version -->
-**Version:** 0.1.0
-<!-- x-release-please-end -->
-
 Browser-only 3D squash — WSF-dimension court, Rapier physics, Tron neon look, two-button input, PARS-11 best-of-3.
-
-## Status
-
-**Alpha (`0.1.x`).** Demo-mode matches already read as real squash; neon visuals and bloom are in good shape. UX/UI still need polish. The player movement and action controller is the largest remaining gap for pitchability — treat this release as a playable tech demo, not a finished game.
 
 ## Play
 
