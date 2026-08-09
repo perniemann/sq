@@ -12,7 +12,7 @@ import {
 } from '../systems/teachPrompts'
 import logoSvg from '../assets/sq-logo.svg?url'
 import { cssVar } from '../theme/colors'
-import { formatVersionLabel } from '../version'
+import { APP_VERSION, formatVersionLabel } from '../version'
 import { measureQDescenderPx } from './measureDescender'
 
 /** Touch devices have no Space key, so the prompts have to name the right gesture. */
@@ -94,6 +94,7 @@ export default function HUD() {
   const gamesToWin = config.gamesToWin
   const showTurnIndicator = phase === 'rally' || phase === 'serving'
   const advancePrompt = phasePrompt(phase)
+  const versionLabel = formatVersionLabel(APP_VERSION)
 
   const titleRef = useRef<HTMLHeadingElement>(null)
   const [markHeightPx, setMarkHeightPx] = useState<number | null>(null)
@@ -463,7 +464,7 @@ export default function HUD() {
             </h1>
 
             <p
-              aria-label={`Version ${formatVersionLabel()}`}
+              aria-label={`Version ${versionLabel}`}
               style={{
                 margin: '0.35rem 0 0',
                 fontSize: 'clamp(0.62rem, 1.8vw, 0.72rem)',
@@ -473,7 +474,7 @@ export default function HUD() {
                 opacity: 0.42,
               }}
             >
-              {formatVersionLabel()}
+              {versionLabel}
             </p>
 
             <p
