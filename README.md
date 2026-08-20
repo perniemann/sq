@@ -8,7 +8,7 @@
 <!-- x-release-please-end -->
 </p>
 
-Browser-only 3D squash — WSF-dimension court, Rapier physics, Tron neon look, two-button input, PARS-11 best-of-3.
+Browser-only 3D squash — WSF-dimension court, Rapier physics, black/white court with cyan/orange accents, two-button input, PARS-11 best-of-3.
 
 ## Play
 
@@ -25,8 +25,8 @@ Full controls and scoring: [docs/HOW-TO-PLAY.md](docs/HOW-TO-PLAY.md).
 
 | Action | Mouse / keyboard | Touch |
 |--------|------------------|-------|
-| Start / continue / charge shot | Click or **Space** / **LMB** (hold to charge, release to hit) | Tap / hold **right** half |
-| Aim while charging | Drag horizontally, or **A**/**D** / arrows | Drag on **right** half |
+| Start / continue / charge shot (length) | Click or **Space** / **LMB** (hold to charge, release to hit) | Tap / hold **right** half |
+| Aim (width; extreme → side-first boast) / attack plane (front=above · back=below) while charging | Drag X/Y, or **A**/**D** + **W**/**S** (arrows) | Drag X/Y on **right** half |
 | Chase the ball | **Shift** / **RMB** | Hold **left** half |
 
 ## Scripts

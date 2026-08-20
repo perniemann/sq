@@ -5,7 +5,7 @@ alwaysApply: true
 
 ## Project
 
-`sq_` is a browser-only 3D squash game: WSF-dimension court, Rapier physics, Tron neon aesthetic, two-button input (Space = charge-and-release shot, Shift = chase), PARS-11 best-of-3 scoring.
+`sq_` is a browser-only 3D squash game: WSF-dimension court, Rapier physics, black/white court substrate with cyan/orange identity accents, two-button input (Space = charge-and-release shot, Shift = chase), PARS-11 best-of-3 scoring.
 
 **Stack:** Vite 6 · React 19 · React Three Fiber 9 + Three.js r182 + drei + postprocessing · Rapier at a fixed 1/60 timestep · Zustand 5 · TypeScript 5.7 strict. Vitest for tests.
 
@@ -21,7 +21,8 @@ alwaysApply: true
 - Verify with `npm run typecheck`, `npm run lint` and `npm test` (Vitest, no config file). Rules and geometry — scoring, interference, AI movement bounds, shot ballistics — belong in tests; reserve manual play-testing for what only eyes can judge (bloom, trail, HUD legibility, model scale).
 - `systems/court.ts` holds the court dimensions. Do not import them from `components/Court.tsx`; that made pure modules pull in React, drei and Rapier, and left them untestable outside a browser.
 - Button A (Space / right touch zone) means different things per phase. Its logic lives in `usePhaseInput` and is registered via `registerButtonAActions` in `useInput.ts`; keyboard and touch both call `pressButtonAction` / `releaseButtonAction`. Never bind game logic directly to a key event — it will silently skip touch.
-- While button A is held, aim is a separate axis (arrows / A·D, or horizontal drag on the right touch zone) routed through the input store; charge duration is power only.
-- The ball can be struck by the racquet sensor and by the per-frame proximity check. `useHitHandlers` enforces a shared cooldown and the `canHit` rule at that single choke point; keep new hit routes going through it.
-- Colors live in `src/theme/colors.ts` + `src/theme/tokens.css` (void / player cyan / opponent orange / hotter ball orange). Three.js reads `HEX.*`; HUD reads CSS vars. Bloom shipped in Phase 2 — authored opacities go through `displayAlpha` in `src/config.ts`. Bounce feel is `BOUNCE_PROFILES` / `?bounce=`. Largest remaining items: Rapier is ~75% of the bundle, and `Scene` still re-renders often.
+- While button A is held, aim (A·D / ←→ / drag X) and attack plane (W·S / ↑↓ / drag Y: front = from above, back = from below; neutral 0.5) are separate axes in the input store; charge duration is power / length only.
+- The ball can be struck by the racquet sensor and by the per-frame proximity check. `useHitHandlers` enforces a shared cooldown and the `canHit` rule at that single choke point; keep new hit routes going through it. `canHit` lives in `gameStore` and restores only on front-wall contact (`systems/returnability.ts`, WSF 6.2) — not on side/back alone.
+- Colors live in `src/theme/colors.ts` + `src/theme/tokens.css` (void / near-white court lines / player cyan / opponent orange / hotter ball orange). Three.js reads `HEX.*`; diegetic `WorldHud` uses `HEX` + troika fonts from `theme/fonts.ts`; residual DOM (`TouchControls`, aria-live) may still use CSS vars. Bloom shipped in Phase 2 — authored opacities go through `displayAlpha` in `src/config.ts`. Bounce feel is `BOUNCE_PROFILES` / `?bounce=`. Largest remaining items: Rapier is ~75% of the bundle, and `Scene` still re-renders often.
+- Match UI is diegetic on the front wall (`components/WorldHud.tsx`). `ui/HUD.tsx` is aria-live only; `TouchControls` stays an invisible half-screen input layer.
 

@@ -7,13 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.0] - 2026-08-09
 
+### Changed
+
+- Court substrate is black/white (`HEX.courtLine` `#f2f4f5` + bloom); cyan/orange reserved for athletes, ball, scores, tin-hit flash
+- WorldHud tin plate contrast and bolder score type on the diegetic band
+
 ### Added
 
 - Playable browser squash demo on a WSF-dimension court with Rapier physics
 - Demo-mode AI vs AI attract loop that hands off into a real match on input
 - Two-button control scheme (charge/shot + chase) for keyboard, mouse, and touch
 - PARS-11 scoring, best-of-3 games, serve and let handling aligned to WSF/PARS
-- Neon Tron aesthetic with bloom, trails, and branded idle lockup
+- Bloom, trails, and branded idle lockup on a minimal black/white court
 - Dynamic SemVer injection (`VITE_APP_VERSION`) shown on the start screen and document title
 - Automated releases via Conventional Commits and Release Please
 
