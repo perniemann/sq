@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import {
-  AIM_DRAG_PX,
+  applyAimDrag,
+  applyLoftDrag,
   useInputStore,
   pressButtonAction,
   releaseButtonAction,
@@ -11,7 +12,7 @@ import { HEX } from '../theme/colors'
  * Mobile Touch Controls
  *
  * Left half of screen: Button B (chase/move toward ball)
- * Right half of screen: Button A (charge/shot); horizontal drag while held sets aim.
+ * Right half of screen: Button A (charge/shot); drag X = aim, drag Y = loft.
  *
  * Supports simultaneous touches for both buttons.
  * Visual feedback is minimal - just a subtle center divider.
@@ -22,12 +23,14 @@ interface TouchZone {
   side: 'left' | 'right'
   active: boolean
   startX: number
+  startY: number
 }
 
 export default function TouchControls() {
   const pressButtonB = useInputStore(state => state.pressButtonB)
   const releaseButtonB = useInputStore(state => state.releaseButtonB)
   const setAim = useInputStore(state => state.setAim)
+  const setLoft = useInputStore(state => state.setLoft)
 
   const activeTouches = useRef<Map<number, TouchZone>>(new Map())
   const leftZoneActive = useRef(false)
@@ -52,6 +55,7 @@ export default function TouchControls() {
           side: zone,
           active: true,
           startX: touch.clientX,
+          startY: touch.clientY,
         })
 
         if (zone === 'left' && !leftZoneActive.current) {
@@ -71,8 +75,8 @@ export default function TouchControls() {
         if (!touchData || touchData.side !== 'right') continue
         if (!useInputStore.getState().buttonA.pressed) continue
 
-        const delta = touch.clientX - touchData.startX
-        setAim(delta / AIM_DRAG_PX)
+        setAim(applyAimDrag(touch.clientX - touchData.startX))
+        setLoft(applyLoftDrag(touchData.startY - touch.clientY))
       }
     }
 
@@ -118,7 +122,7 @@ export default function TouchControls() {
       document.removeEventListener('touchend', handleTouchEnd)
       document.removeEventListener('touchcancel', handleTouchCancel)
     }
-  }, [pressButtonB, releaseButtonB, setAim])
+  }, [pressButtonB, releaseButtonB, setAim, setLoft])
 
   return (
     <div
