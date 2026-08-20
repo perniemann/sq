@@ -3,16 +3,19 @@
  * permanent control legend. Pure — HUD owns dismiss progress and rendering.
  */
 
-export type TeachTipId = 'serve' | 'return'
+export type TeachTipId = 'serve' | 'return' | 'chaseAfterDouble'
 
 export type TeachProgress = {
   serveDone: boolean
   returnDone: boolean
+  /** First player-lost DOUBLE BOUNCE chase nudge shown (or dismissed). */
+  doubleBounceDone: boolean
 }
 
 export const INITIAL_TEACH_PROGRESS: TeachProgress = {
   serveDone: false,
   returnDone: false,
+  doubleBounceDone: false,
 }
 
 export type TeachContext = {
@@ -22,22 +25,49 @@ export type TeachContext = {
   currentStriker: 'player' | 'opponent'
   progress: TeachProgress
   touch: boolean
-}
-
-/** Short monospace labels — mouse/keyboard vs touch wording. */
-export function teachTipLabel(id: TeachTipId, touch: boolean): string {
-  if (id === 'serve') {
-    return touch ? 'HOLD RIGHT · DRAG AIM · RELEASE' : 'HOLD LMB · MOVE AIM · RELEASE'
-  }
-  return touch ? 'HOLD LEFT TO CHASE · RIGHT TO HIT' : 'RMB TO CHASE · LMB TO HIT'
+  /** Point-end reason when `phase === 'point'` (e.g. doubleBounce). */
+  pointReason?: string | null
+  pointWinner?: 'player' | 'opponent' | null
 }
 
 /**
- * At most one tip. First serve (player) then first return (player to strike).
- * Hidden in demo and whenever phase advance prompts own the scoreboard slot.
+ * Short monospace labels. Keyboard/mouse: primary Space / Shift (skeptic-revised);
+ * mouse bindings are secondary so keyboard players are not taught LMB/RMB first.
+ * Touch keeps half-screen zone wording.
+ */
+export function teachTipLabel(id: TeachTipId, touch: boolean): string {
+  if (id === 'serve') {
+    return touch
+      ? 'HOLD RIGHT · L/R AIM · FRONT=ABOVE BACK=BELOW · RELEASE'
+      : 'HOLD SPACE · L/R AIM · FRONT=ABOVE · BACK=BELOW · RELEASE'
+  }
+  if (id === 'chaseAfterDouble') {
+    return touch
+      ? 'HOLD LEFT TO CHASE · RIGHT TO HIT'
+      : 'SHIFT TO CHASE · SPACE TO HIT'
+  }
+  return touch
+    ? 'HOLD LEFT TO CHASE · RIGHT TO HIT'
+    : 'SHIFT TO CHASE · SPACE TO HIT'
+}
+
+/**
+ * At most one tip. First serve (player), first return (player to strike), then
+ * first player-lost DOUBLE BOUNCE chase nudge on the point screen.
+ * Hidden in demo; point tip shares the continue secondary line in WorldHud.
  */
 export function activeTeachTip(ctx: TeachContext): TeachTipId | null {
   if (ctx.demoMode) return null
+
+  if (
+    ctx.phase === 'point'
+    && ctx.pointReason === 'doubleBounce'
+    && ctx.pointWinner === 'opponent'
+    && !ctx.progress.doubleBounceDone
+  ) {
+    return 'chaseAfterDouble'
+  }
+
   if (ctx.phase === 'idle' || ctx.phase === 'point' || ctx.phase === 'gameOver' || ctx.phase === 'matchOver') {
     return null
   }
@@ -58,9 +88,21 @@ export function activeTeachTip(ctx: TeachContext): TeachTipId | null {
   return null
 }
 
+/**
+ * Dismiss policy for the first player-lost DOUBLE BOUNCE chase tip.
+ * Only after the tip was shown — not on every point leave or every chase.
+ */
+export function shouldDismissDoubleBounceTip(
+  tipWasShown: boolean,
+  event: 'leavePoint' | 'chaseOnPoint',
+): boolean {
+  if (!tipWasShown) return false
+  return event === 'leavePoint' || event === 'chaseOnPoint'
+}
+
 export function advanceTeachProgress(
   progress: TeachProgress,
-  event: 'served' | 'returned' | 'chased',
+  event: 'served' | 'returned' | 'chased' | 'doubleBounceSeen',
 ): TeachProgress {
   if (event === 'served') {
     if (progress.serveDone) return progress
@@ -69,6 +111,10 @@ export function advanceTeachProgress(
   if (event === 'returned' || event === 'chased') {
     if (progress.returnDone) return progress
     return { ...progress, returnDone: true }
+  }
+  if (event === 'doubleBounceSeen') {
+    if (progress.doubleBounceDone) return progress
+    return { ...progress, doubleBounceDone: true }
   }
   return progress
 }

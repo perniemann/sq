@@ -1,17 +1,13 @@
 import { useRef, useCallback, useEffect } from 'react'
 import { useInputStore, registerButtonAActions, chargeDurationToPower } from './useInput'
 import { getTotalSwingDuration } from '../systems/swingAnimation'
-import type { GamePhase, RallyState } from '../stores/gameStore'
+import { useGameStore, type GamePhase, type RallyState } from '../stores/gameStore'
 import { DEBUG } from '../config'
 
 /** AI/PlayerAI charge phase (excludes followThrough) */
 type SwingChargePhase = 'none' | 'racquetPrep' | 'bodyCoil' | 'powerLoad'
 
 interface UsePhaseInputParams {
-  phase: GamePhase
-  demoMode: boolean
-  canHit: boolean
-  currentStriker: 'player' | 'opponent'
   resetBallForServe: () => void
   startNextRally: () => void
   startNextGame: () => void
@@ -36,10 +32,6 @@ interface UsePhaseInputParams {
 
 export function usePhaseInput(params: UsePhaseInputParams): void {
   const {
-    phase,
-    demoMode,
-    canHit,
-    currentStriker,
     resetBallForServe,
     startNextRally,
     startNextGame,
@@ -70,7 +62,11 @@ export function usePhaseInput(params: UsePhaseInputParams): void {
   const releaseButtonA = useInputStore(state => state.releaseButtonA)
 
   const handlePhaseTransition = useCallback(() => {
-    if (demoMode) {
+    // Read live store — button-A handlers are registered in an effect, so a press on the
+    // same tick a point is awarded can still see the previous render's `phase` / demo flag.
+    const live = useGameStore.getState()
+
+    if (live.demoMode) {
       setDemoMode(false)
       setPlayerAIIsSwinging(false)
       setPlayerAISwingStartTime(null)
@@ -101,7 +97,7 @@ export function usePhaseInput(params: UsePhaseInputParams): void {
       return true
     }
 
-    if (phase === 'idle') {
+    if (live.phase === 'idle') {
       setPhase('serving')
       setRallyState('serving')
       setCurrentStriker('player')
@@ -109,18 +105,18 @@ export function usePhaseInput(params: UsePhaseInputParams): void {
       return true
     }
 
-    if (phase === 'point') {
+    if (live.phase === 'point') {
       startNextRally()
       return true
     }
 
-    if (phase === 'gameOver') {
+    if (live.phase === 'gameOver') {
       startNextGame()
       resetBallForServe()
       return true
     }
 
-    if (phase === 'matchOver') {
+    if (live.phase === 'matchOver') {
       resetMatch()
       setTimeout(() => {
         resetBallForServe()
@@ -132,8 +128,6 @@ export function usePhaseInput(params: UsePhaseInputParams): void {
 
     return false
   }, [
-    demoMode,
-    phase,
     setDemoMode,
     setPhase,
     setRallyState,
@@ -158,9 +152,13 @@ export function usePhaseInput(params: UsePhaseInputParams): void {
 
   const handleSwingStart = useCallback(
     (power: number) => {
-      if ((phase === 'serving' || phase === 'rally') && currentStriker === 'player') {
-        if (!canHit) {
-          if (DEBUG) console.log('Cannot hit yet - wait for bounce')
+      const live = useGameStore.getState()
+      if (
+        (live.phase === 'serving' || live.phase === 'rally') &&
+        live.currentStriker === 'player'
+      ) {
+        if (!live.canHit) {
+          if (DEBUG) console.log('Cannot hit yet - wait for front wall')
           return
         }
         startSwing(power)
@@ -169,7 +167,7 @@ export function usePhaseInput(params: UsePhaseInputParams): void {
         swingEndTimeoutRef.current = setTimeout(() => endSwing(), getTotalSwingDuration())
       }
     },
-    [phase, currentStriker, canHit, startSwing, endSwing]
+    [startSwing, endSwing]
   )
 
   useEffect(() => {

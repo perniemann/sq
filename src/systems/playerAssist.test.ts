@@ -9,6 +9,7 @@ import {
   type PlayerAssistContext,
 } from './playerAssist'
 import { RECEIVER_POSITIONS } from './courtPositions'
+import { PLAYER_CHASE_SPEED } from './playerChase'
 
 function base(overrides: Partial<PlayerAssistContext> = {}): PlayerAssistContext {
   return {
@@ -27,6 +28,12 @@ function base(overrides: Partial<PlayerAssistContext> = {}): PlayerAssistContext
     ...overrides,
   }
 }
+
+describe('assist vs chase constraint', () => {
+  it('keeps soft assist strictly slower than Shift chase', () => {
+    expect(ASSIST_SPEED).toBeLessThan(PLAYER_CHASE_SPEED)
+  })
+})
 
 describe('playerAssistNudge', () => {
   it('stays silent inside the dead zone', () => {

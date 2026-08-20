@@ -5,10 +5,11 @@ import { calculateOptimalAIPosition } from './hitAccuracy'
 import { predictInterceptPosition } from './ai'
 
 /**
- * Soft drift toward the return pocket — arcade magnet, still well below chase (10)
- * and recovery (5). Tuned so Space-only returns land without forcing Shift every ball.
+ * Soft drift toward the return pocket — arcade magnet, still well below chase (10).
+ * Constraint (tested): `ASSIST_SPEED < PLAYER_CHASE_SPEED` so Shift stays the skill ceiling.
+ * Tuned so Space-only returns land without forcing Shift every ball.
  */
-export const ASSIST_SPEED = 3.8
+export const ASSIST_SPEED = 5.2
 
 /** Scratch for ideal stand calc — no per-frame `new Vector3` in the rally loop. */
 const _playerScratch = new THREE.Vector3()
@@ -21,7 +22,7 @@ export const ASSIST_DEAD_ZONE = 0.38
  * short step in the right direction — the Dead Cells “magnet” trick so the pull never
  * reads as an auto-sprint across the court. Generous enough for arcade returns.
  */
-export const ASSIST_MAX_STEP = 2.3
+export const ASSIST_MAX_STEP = 3.2
 
 export type PlayerAssistContext = {
   playerX: number
