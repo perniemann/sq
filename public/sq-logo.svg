@@ -1,10 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0.5 0.5 31 31" role="img" aria-label="sq_ mark">
   <title>sq_ mark</title>
-  <desc>Square mark — ink frame/mid/lower vertical; orange triangle outline.</desc>
+  <desc>Square mark — ink frame; orange bottom underscore wedge.</desc>
   <g stroke-linejoin="miter" stroke-linecap="butt" fill="none">
     <rect x="3" y="3" width="26" height="26" stroke="#eef6f7" stroke-width="4.25"/>
-    <path d="M3 16 H29" stroke="#eef6f7" stroke-width="4.25"/>
-    <path d="M16 16 V29" stroke="#eef6f7" stroke-width="4.25"/>
-    <path d="M3 29 L16 3 L29 29 Z" stroke="#ff6600" stroke-width="2.125"/>
+    <path d="M3 29 L16 14 L29 29 Z" stroke="#ff6600" stroke-width="2.125"/>
   </g>
 </svg>

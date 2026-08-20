@@ -76,6 +76,7 @@ export function StartLockup({
           display: 'flex',
           alignItems: 'baseline',
           justifyContent: 'center',
+          gap: 0,
           fontSize: 'clamp(2.75rem, 12vw, 5rem)',
           lineHeight: 1,
           color: cssVar.ink,
@@ -90,7 +91,8 @@ export function StartLockup({
         <span style={{
           display: 'inline-flex',
           alignItems: 'flex-end',
-          gap: '0.06em',
+          // Match optical gap between Outfit `s`/`q` (sidebearings + -0.03em tracking)
+          gap: 0,
         }}>
           <span style={{ lineHeight: 1 }}>q</span>
           <img
@@ -102,6 +104,8 @@ export function StartLockup({
               width: 'auto',
               display: 'block',
               filter: 'none',
+              // Pull into SVG left pad so ink-to-ink matches letter sidebearings
+              marginLeft: '-0.04em',
               transform: markNudgePx > 0 ? `translateY(${markNudgePx}px)` : undefined,
             }}
           />
