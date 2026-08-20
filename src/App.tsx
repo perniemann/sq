@@ -28,21 +28,21 @@ export default function App(): React.ReactElement {
         <Physics timeStep={1 / 60} gravity={[0, -9.81, 0]}>
           <Scene />
         </Physics>
-        {/* The whole scene is unlit basic materials on black, so bloom is what makes the
-            neon lines read as light rather than as thin flat strokes.
+        {/* Unlit MeshBasic on void — bloom makes white court edges and cyan/orange
+            accents read as light. Threshold/intensity tuned for near-white lines.
 
             Mounting a composer switches the renderer to NoToneMapping, so the ACES pass
             restores the curve the scene's colours were chosen against, and it has to run
-            after bloom. The composer still renders the court's translucent fill panels
-            brighter than the direct render did, which is why they were dropped to 2%.
+            after bloom. Translucent fills still render brighter under the composer, which
+            is why court fill stays at 2%.
 
             mipmapBlur is deliberately not used: its low mips average the whole frame and
-            lift the black background to teal. */}
+            lift the black background. */}
         {BLOOM_ENABLED && (
           <EffectComposer>
             <Bloom
-              intensity={1.2}
-              luminanceThreshold={0.35}
+              intensity={1.0}
+              luminanceThreshold={0.45}
               luminanceSmoothing={0.15}
               kernelSize={KernelSize.LARGE}
             />

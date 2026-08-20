@@ -5,16 +5,18 @@ import * as THREE from 'three'
 import Court from './Court'
 import Ball from './Ball'
 import Player from './Player'
+import WorldHud from './WorldHud'
 import GameCamera from './GameCamera'
 import { HEX } from '../theme/colors'
 import { installRallyTelemetryGlobal } from '../systems/rallyTelemetry'
+import { installReceiveTelemetryGlobal } from '../systems/receiveTelemetry'
+import { opponentMatchDifficulty } from '../systems/matchDifficulty'
 
 const OrbitDebug = lazy(() => import('./OrbitDebug'))
 import { 
   useKeyboardInput,
   useMouseInput, 
   useInputStore, 
-  useChargeLevel, 
   useIsChasing, 
   useIsCharging,
   useChargePhase,
@@ -44,7 +46,7 @@ import { usePhaseInput } from '../hooks/usePhaseInput'
 import { useDemoModeEffects } from '../hooks/useDemoModeEffects'
 import { determinePointWinner, type PlayerSide, type PointReason } from '../systems/scoring'
 import { SERVICE_BOX_POSITIONS, RECEIVER_POSITIONS } from '../systems/courtPositions'
-import { serveBallWorldPosition } from '../systems/serveRules'
+import { serveBallWorldPosition, isBallFrozenBetweenPoints, humanServeHoldPosition, aiServeHoldPosition } from '../systems/serveRules'
 import { playerChaseTarget, PLAYER_CHASE_SPEED } from '../systems/playerChase'
 import { computePlayerAssist } from '../systems/playerAssist'
 import { aimToPlayerRotation } from '../systems/aimRotation'
@@ -72,7 +74,6 @@ export default function Scene() {
   useMouseInput()
 
   const isCharging = useIsCharging()
-  const chargeLevel = useChargeLevel()
   const pendingShotPower = usePendingShotPower()
   const chargePhase = useChargePhase()
   const isChasing = useIsChasing()
@@ -85,7 +86,10 @@ export default function Scene() {
   const endSwing = useInputStore(state => state.endSwing)
 
   useEffect(() => {
-    if (import.meta.env.DEV) installRallyTelemetryGlobal()
+    if (import.meta.env.DEV) {
+      installRallyTelemetryGlobal()
+      installReceiveTelemetryGlobal()
+    }
   }, [])
 
   const phase = useGameStore(state => state.phase)
@@ -97,11 +101,6 @@ export default function Scene() {
   const currentShotType = useGameStore(state => state.currentShotType)
   const setCurrentShotType = useGameStore(state => state.setCurrentShotType)
   const setLastShotType = useGameStore(state => state.setLastShotType)
-  const currentShotName = phase === 'serving' && isCharging
-    ? 'SERVE'
-    : currentShotType
-      ? getShotConfig(currentShotType).displayName
-      : null
   const currentStriker = useGameStore(state => state.currentStriker)
   const setCurrentStriker = useGameStore(state => state.setCurrentStriker)
   const setLastHitter = useGameStore(state => state.setLastHitter)
@@ -113,6 +112,8 @@ export default function Scene() {
   const serviceBox = useGameStore(state => state.serviceBox)
   const demoMode = useGameStore(state => state.demoMode)
   const setDemoMode = useGameStore(state => state.setDemoMode)
+  const gamesWonPlayer = useGameStore(state => state.matchState.gamesWon.player)
+  const gamesWonOpponent = useGameStore(state => state.matchState.gamesWon.opponent)
   const [movementPhase, setMovementPhase] = useState<MovementPhase>('idle')
   const movementPhaseRef = useRef<MovementPhase>('idle')
   const setMovementPhaseIfChanged = useCallback((next: MovementPhase) => {
@@ -123,7 +124,13 @@ export default function Scene() {
   const [isRecovering, setIsRecovering] = useState(false)
   const recoveryTimeoutRef = useRef<number | null>(null)
   const ballRef = useRef<RapierRigidBody>(null)
-  const [canHit, setCanHit] = useState(true)
+  const canHit = useGameStore(state => state.canHit)
+  const currentShotName =
+    phase === 'serving' && isCharging && canHit && currentStriker === 'player'
+      ? 'SERVE'
+      : currentShotType
+        ? getShotConfig(currentShotType).displayName
+        : null
   
   // Ball held in the service box until strike (full pose pinned in Ball while serving).
   const servePose = serveBallWorldPosition(serviceBox as 'left' | 'right')
@@ -149,6 +156,19 @@ export default function Scene() {
   const initialReceiverPos = RECEIVER_POSITIONS[serviceBox as keyof typeof RECEIVER_POSITIONS]
   const aiConfig = useRef<AIConfig>(createAIConfig('medium'))
   const aiState = useRef<AIState>(createAIState([initialReceiverPos.x, 0.01, initialReceiverPos.z]))
+
+  // First human game opens easy; demo stays medium; ramp after either side wins a game.
+  useEffect(() => {
+    const next = opponentMatchDifficulty({
+      demoMode,
+      gamesWonPlayer,
+      gamesWonOpponent,
+    })
+    if (aiConfig.current.difficulty === next) return
+    aiConfig.current = createAIConfig(next)
+    if (DEBUG) console.log('Opponent AI difficulty →', next)
+  }, [demoMode, gamesWonPlayer, gamesWonOpponent])
+
   /** Opponent floor pose — updated in useFrame / serve reset; never via React setState. */
   const aiPosRef = useRef<[number, number, number]>([
     initialReceiverPos.x,
@@ -187,6 +207,10 @@ export default function Scene() {
   const playerAIChargeStartTime = useRef<number | null>(null)
   const playerAISwingTimeoutRef = useRef<number | null>(null)
   const [playerAISwingStartTime, setPlayerAISwingStartTime] = useState<number | null>(null)
+
+  /** Debounce ground shot-type preview so the label does not flicker frame-to-frame. */
+  const shotPreviewCandidateRef = useRef<string | null>(null)
+  const shotPreviewSinceRef = useRef(0)
   
   const {
     resetBallForServe,
@@ -199,7 +223,6 @@ export default function Scene() {
     aiState,
     playerAIState,
     aiPosRef,
-    setCanHit,
     lastAIHitTime,
   })
   
@@ -219,6 +242,7 @@ export default function Scene() {
     if (DEBUG) console.log(`Point for ${winner}: ${reason}`)
     
     awardPointTo(winner, reason)
+    useInputStore.getState().endSwing()
     
     // Reset ball hit tracking
     serveRefs.ballHitFrontWall.current = false
@@ -240,6 +264,7 @@ export default function Scene() {
     if (DEBUG) console.log('LET: rally replayed, no point')
 
     callLet()
+    useInputStore.getState().endSwing()
 
     serveRefs.ballHitFrontWall.current = false
     serveRefs.serveHitAboveServiceLine.current = false
@@ -254,43 +279,63 @@ export default function Scene() {
   } = useBallCollisionHandlers({
     serveRefs,
     handlePointScored,
-    setCanHit,
   })
   
   // Update hold duration and movement state every frame
   useFrame((_, delta) => {
     const clampedDelta = Math.min(delta, 0.1) // Cap at 100ms to avoid AI teleporting when tab was hidden
     const now = Date.now()
-    // Only allow charging during serving or rally phases when it's player's turn
-    const canCharge = (phase === 'serving' || phase === 'rally') && currentStriker === 'player'
+    // Early wind-up: charge while returnable on your turn — not gated on proximity.
+    const canCharge =
+      (phase === 'serving' || phase === 'rally') &&
+      currentStriker === 'player' &&
+      canHit
     
     if (isCharging && canCharge) {
       updateHoldDuration()
 
       // Serve is its own action — do not preview a rally DRIVE while the ball is held.
       if (phase === 'serving') {
+        shotPreviewCandidateRef.current = null
         setCurrentShotType(null)
       } else {
         // Aim→yaw (not the lerped mesh yaw) so the ground label matches the charge arc.
+        const input = useInputStore.getState()
         const detectedShot = detectShotType({
           playerPosition: playerPositionVec.current,
           ballPosition: ballPosition,
-          playerRotation: aimToPlayerRotation(useInputStore.getState().aim),
+          playerRotation: aimToPlayerRotation(input.aim),
           chargePower: pendingShotPower,
+          loft: input.loft,
         })
-        setCurrentShotType(detectedShot)
+        if (detectedShot !== shotPreviewCandidateRef.current) {
+          shotPreviewCandidateRef.current = detectedShot
+          shotPreviewSinceRef.current = now
+        } else if (
+          now - shotPreviewSinceRef.current >= 80 &&
+          currentShotType !== detectedShot
+        ) {
+          setCurrentShotType(detectedShot)
+        }
       }
     } else {
-      setCurrentShotType(null)
+      shotPreviewCandidateRef.current = null
+      if (currentShotType !== null) setCurrentShotType(null)
     }
     
     // Chase (Shift) > soft receive assist > recovery. Assist is a capped Dead Cells-style
     // magnet — never a full auto-sprint (see `playerAssist.ts`).
-    const humanHold =
-      phase === 'idle' ||
-      (phase === 'serving' && !demoMode && servingPlayer === 'player')
+    // Live phase: React `phase` can lag one frame after awardPointTo / startNextRally.
+    const livePhase = useGameStore.getState().phase
+    const liveServingPlayer = useGameStore.getState().servingPlayer
+    const betweenPoints = isBallFrozenBetweenPoints(livePhase)
+    const humanHold = humanServeHoldPosition(livePhase, liveServingPlayer, demoMode)
 
-    if (isChasing) {
+    if (betweenPoints) {
+      targetPosRef.current = null
+      moveSpeedRef.current = 0
+      setMovementPhaseIfChanged('idle')
+    } else if (isChasing) {
       const timeSinceChase = chaseStartTime ? Date.now() - chaseStartTime : 0
       
       if (timeSinceChase < MOVEMENT_TIMING.SPLIT_STEP_DURATION) {
@@ -320,8 +365,8 @@ export default function Scene() {
         ball: ballPosition,
         ballVelocity: ballVelocity.current,
         isStriker: currentStriker === 'player',
-        phase,
-        servingPlayer,
+        phase: livePhase,
+        servingPlayer: liveServingPlayer,
         serviceBox: serviceBox as 'left' | 'right',
         isChasing: false,
         isRecovering: false,
@@ -555,7 +600,7 @@ export default function Scene() {
       }
     }
     // AI SERVE LOGIC: Start charging to serve after a delay
-    else if (isAIServing && now - lastAIHitTime.current > 1000) {
+    else if (isAIServing && canHit && now - lastAIHitTime.current > 1000) {
       // Start AI serve charge
       aiChargeStartTime.current = now
       setAIChargePhase('racquetPrep')
@@ -569,6 +614,7 @@ export default function Scene() {
       ballPosition,
       ballVelocity: actualBallVelocity,
       config: aiConfig.current,
+      returnable: canHit,
     })) {
       // Debounce AI hits (minimum 300ms between hits)
       if (now - lastAIHitTime.current > 300) {
@@ -646,7 +692,7 @@ export default function Scene() {
         }
       }
       // Player AI serve logic
-      else if (isPlayerServing && now - lastPlayerAIHitTime.current > 1000) {
+      else if (isPlayerServing && canHit && now - lastPlayerAIHitTime.current > 1000) {
         playerAIChargeStartTime.current = now
         setPlayerAIChargePhase('racquetPrep')
         setPlayerAISwingPower(0)
@@ -659,6 +705,7 @@ export default function Scene() {
         ballPosition,
         ballVelocity: actualBallVelocity,
         config: playerAIConfig.current,
+        returnable: canHit,
       })) {
         if (now - lastPlayerAIHitTime.current > 300) {
           playerAIChargeStartTime.current = now
@@ -707,8 +754,6 @@ export default function Scene() {
     playerPositionVec,
     aiPosRef,
     serveRefs,
-    canHit,
-    setCanHit,
     setLastHitter,
     setCurrentStriker,
     setPhase,
@@ -738,10 +783,6 @@ export default function Scene() {
   })
 
   usePhaseInput({
-    phase,
-    demoMode,
-    canHit,
-    currentStriker,
     resetBallForServe,
     startNextRally,
     startNextGame,
@@ -802,6 +843,9 @@ export default function Scene() {
       
       {/* Court geometry */}
       <Court />
+
+      {/* Diegetic score / prompts / callouts on the front wall */}
+      <WorldHud />
       
       {/* Ball with physics - starts in service box area */}
       <Ball 
@@ -817,8 +861,19 @@ export default function Scene() {
       <Player 
         position={playerPosRef.current}
         ballPosition={ballPosition}
-        isCharging={demoMode ? playerAIChargePhase !== 'none' : isCharging}
-        chargeLevel={demoMode ? playerAISwingPower : chargeLevel}
+        isCharging={
+          demoMode
+            ? playerAIChargePhase !== 'none'
+            : isCharging && canHit && currentStriker === 'player'
+        }
+        // Fill opacity + dial use shot power only while charging (idle = 0 strength).
+        chargeLevel={
+          demoMode
+            ? playerAISwingPower
+            : isCharging && canHit && currentStriker === 'player'
+              ? pendingShotPower
+              : 0
+        }
         chargePhase={demoMode ? playerAIChargePhase : chargePhase}
         movementPhase={demoMode ? 'idle' : movementPhase}
         chaseStartTime={demoMode ? null : chaseStartTime}
@@ -828,11 +883,8 @@ export default function Scene() {
         swingPower={demoMode ? playerAISwingPower : swingPower}
         onRacquetHit={demoMode ? handlePlayerAIRacquetHit : handleRacquetHit}
         isCurrentStriker={currentStriker === 'player'}
-        // Freeze only while *you* serve (foot in box). Receivers must be free to chase.
-        holdPosition={
-          phase === 'idle' ||
-          (phase === 'serving' && !demoMode && servingPlayer === 'player')
-        }
+        // Freeze idle / between points / while *you* serve. Receivers stay free to chase.
+        holdPosition={humanServeHoldPosition(phase, servingPlayer, demoMode)}
         chargeStartTime={demoMode ? playerAIChargeStartTime.current : chargeStartTime}
         swingStartTime={demoMode ? playerAISwingStartTime : swingStartTime}
         currentShotName={demoMode ? null : currentShotName}
@@ -840,7 +892,7 @@ export default function Scene() {
         onPositionFrame={demoMode ? undefined : onPlayerPositionFrame}
         targetPositionRef={demoMode ? undefined : targetPosRef}
         moveSpeedRef={demoMode ? undefined : moveSpeedRef}
-        livePositionRef={demoMode ? playerPosRef : undefined}
+        livePositionRef={playerPosRef}
       />
       
       {/* Opponent (orange) - AI controlled, starts in receiver position */}
@@ -857,7 +909,7 @@ export default function Scene() {
         swingPower={aiSwingPower}
         onRacquetHit={handleAIRacquetHit}
         isCurrentStriker={currentStriker === 'opponent'}
-        holdPosition={phase === 'idle' || phase === 'serving'}
+        holdPosition={aiServeHoldPosition(phase)}
         chargeStartTime={aiChargeStartTime.current}
         swingStartTime={aiSwingStartTime}
         rotationRef={aiRotationRef}

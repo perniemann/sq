@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
 import type { RapierRigidBody } from '@react-three/rapier'
 import { useGLTF, Text } from '@react-three/drei'
+import { FONT_UTILITY } from '../theme/fonts'
 import * as THREE from 'three'
 import {
   COURT,
@@ -12,21 +13,39 @@ import {
   ATHLETE_MODEL_Z_OFFSET,
   GLB_ACCENT_MATERIAL,
 } from '../systems/court'
-import { type MovementPhase, type ChargePhase } from '../stores/gameStore'
+import { type MovementPhase, type ChargePhase, useGameStore } from '../stores/gameStore'
 import { T_POSITION } from '../systems/courtPositions'
-import { MOVEMENT_TIMING, useInputStore, useAim } from '../hooks/useInput'
+import { isAthleteHeldBetweenPoints } from '../systems/serveRules'
+import {
+  CHARGE_MOVE_SPEED_SCALE,
+  LOFT_NEUTRAL,
+  MOVEMENT_TIMING,
+  POWER_BAND_LEVELS,
+  useInputStore,
+  useAim,
+  useLoft,
+} from '../hooks/useInput'
 import {
   calculateSwingState,
   calculateRacquetTransform,
   type SwingState,
 } from '../systems/swingAnimation'
 import { isInSwingHitWindow } from '../systems/hitTiming'
+import {
+  athleteFillAuthoredOpacity,
+  athleteFillStrength,
+} from '../systems/athleteFill'
 import { DEBUG, displayAlpha } from '../config'
 import { HEX } from '../theme/colors'
 import {
   AIM_ARC_RANGE,
-  AIM_START_ANGLE,
+  AIM_NEUTRAL,
+  aimPreviewDirection,
+  aimToFloorNeedleTheta,
   aimToPlayerRotation,
+  chargeRingHintActivation,
+  chargeRingHintPoses,
+  floorNeedlePose,
 } from '../systems/aimRotation'
 import { PLAYER_CHASE_SPEED } from '../systems/playerChase'
 
@@ -36,6 +55,16 @@ const PLAYER_SIZE = ATHLETE_SIZE.width / 2
 
 /** Reused when a ball position is not supplied, so useFrame stays allocation-free. */
 const DEFAULT_BALL_POSITION = new THREE.Vector3(0, 1, -2)
+
+function setAthleteFillOpacity(root: THREE.Object3D, opacity: number): void {
+  root.traverse((child) => {
+    if (!(child instanceof THREE.Mesh) || child.userData.isAthleteFill !== true) return
+    const mats = Array.isArray(child.material) ? child.material : [child.material]
+    for (const mat of mats) {
+      if (mat instanceof THREE.MeshBasicMaterial) mat.opacity = opacity
+    }
+  })
+}
 
 /**
  * Arc length is quantised before it reaches the geometry so the ring is rebuilt at most
@@ -208,10 +237,11 @@ export default function Player({
   // Racquet rigid body ref for kinematic updates
   const racquetBodyRef = useRef<RapierRigidBody>(null)
   
-  // Clone and apply materials preserving mat_a = fill, mat_b = accent
+  // Clone and apply materials: mat_b = opaque accent, mat_a = strength-linked fill
   const playerModel = useMemo(() => {
     const cloned = playerScene.clone()
     let accentMeshes = 0
+    const idleFill = displayAlpha(athleteFillAuthoredOpacity(0))
 
     cloned.traverse((child) => {
       if (child instanceof THREE.Mesh) {
@@ -220,16 +250,20 @@ export default function Player({
 
         if (matName === GLB_ACCENT_MATERIAL) {
           accentMeshes++
+          child.userData.isAthleteFill = false
           child.material = new THREE.MeshBasicMaterial({
             color: color,
             transparent: false,
             side: THREE.DoubleSide,
           })
         } else {
+          child.userData.isAthleteFill = true
           child.material = new THREE.MeshBasicMaterial({
             color: color,
             transparent: true,
-            opacity: displayAlpha(0.15),
+            opacity: idleFill,
+            // Write depth so diegetic tin HUD cannot paint over a nearer athlete.
+            depthWrite: true,
             side: THREE.DoubleSide,
           })
         }
@@ -249,6 +283,7 @@ export default function Player({
   const racquetModel = useMemo(() => {
     const cloned = racquetScene.clone()
     let accentMeshes = 0
+    const idleFill = displayAlpha(athleteFillAuthoredOpacity(0))
 
     cloned.traverse((child) => {
       if (child instanceof THREE.Mesh) {
@@ -257,16 +292,19 @@ export default function Player({
 
         if (matName === GLB_ACCENT_MATERIAL) {
           accentMeshes++
+          child.userData.isAthleteFill = false
           child.material = new THREE.MeshBasicMaterial({
             color,
             transparent: false,
             side: THREE.DoubleSide,
           })
         } else {
+          child.userData.isAthleteFill = true
           child.material = new THREE.MeshBasicMaterial({
             color,
             transparent: true,
-            opacity: displayAlpha(0.2),
+            opacity: idleFill,
+            depthWrite: true,
             side: THREE.DoubleSide,
           })
         }
@@ -282,34 +320,73 @@ export default function Player({
 
     return cloned
   }, [racquetScene, color])
+
+  const fillOpacityRef = useRef(displayAlpha(athleteFillAuthoredOpacity(0)))
   
   const aim = useAim()
+  const loft = useLoft()
+  // Bumped by resetBallForServe — must snap even when controllable free movement owns pose.
+  const serveResetCount = useGameStore(state => state.serveResetCount)
+  const appliedServeResetRef = useRef(serveResetCount)
 
   useFrame((_, delta) => {
     if (isControllable) {
-      useInputStore.getState().tickAim(Math.min(delta, 0.1))
+      const clamped = Math.min(delta, 0.1)
+      useInputStore.getState().tickAim(clamped)
+      useInputStore.getState().tickLoft(clamped)
     }
+
+    // Body + racquet fill densifies with shot strength (same curve for cyan and orange).
+    const strength = athleteFillStrength(isCharging, chargeLevel)
+    const nextFill = displayAlpha(athleteFillAuthoredOpacity(strength))
+    if (nextFill !== fillOpacityRef.current) {
+      fillOpacityRef.current = nextFill
+      setAthleteFillOpacity(playerModel, nextFill)
+      setAthleteFillOpacity(racquetModel, nextFill)
+    }
+
     if (!groupRef.current) return
     
     const target = targetRef.current
     let currentSpeed: number
 
-    // Authoritative pose: live ref (AI/demo) or props for held serve; controllable
-    // free movement owns currentPos — never snap from a stale React prop.
+    // Authoritative pose: live ref (AI/demo/human) or props for held serve; controllable
+    // free movement owns currentPos — never snap from a stale React prop *except* on
+    // serve teleport. Without that snap, onPositionFrame overwrites playerPosRef before
+    // holdPosition props catch up after a won point → continue.
     const livePose = livePositionRefLocal.current?.current
-    if (holdPosition || !isControllable) {
+    let snappedThisFrame = false
+    if (serveResetCount !== appliedServeResetRef.current) {
+      appliedServeResetRef.current = serveResetCount
+      snappedThisFrame = true
       if (livePose) {
         currentPos.current.set(livePose[0], livePose[1], livePose[2])
       } else {
         currentPos.current.set(position[0], position[1], position[2])
       }
-      if (holdPosition) velocity.current.set(0, 0, 0)
+      velocity.current.set(0, 0, 0)
+    }
+
+    // Live between-points hold: React `holdPosition` can lag one frame after awardPointTo,
+    // and a null chase target would soft-walk toward T.
+    const liveHeldBetween = isAthleteHeldBetweenPoints(useGameStore.getState().phase)
+    const effectivelyHeld = holdPosition || liveHeldBetween || snappedThisFrame
+
+    if (effectivelyHeld || !isControllable) {
+      if (!snappedThisFrame) {
+        if (livePose) {
+          currentPos.current.set(livePose[0], livePose[1], livePose[2])
+        } else {
+          currentPos.current.set(position[0], position[1], position[2])
+        }
+      }
+      if (effectivelyHeld) velocity.current.set(0, 0, 0)
     }
     
     const liveChaseTarget = targetPositionRefLocal.current?.current ?? targetPosition
     const heldPose = livePose ?? position
 
-    if (holdPosition) {
+    if (effectivelyHeld) {
       target.set(...heldPose)
       currentSpeed = 0
     } else if (liveChaseTarget) {
@@ -380,6 +457,10 @@ export default function Player({
     }
     
     // --- APPLY MOVEMENT ---
+    // Charge tax: slower chase/strafe while winding up (hold still builds power).
+    if (isCharging) {
+      speedMultiplier *= CHARGE_MOVE_SPEED_SCALE
+    }
     const effectiveSpeed = currentSpeed * speedMultiplier
     const direction = tempVec2Ref.current.copy(target).sub(currentPos.current)
     direction.y = 0
@@ -433,13 +514,13 @@ export default function Player({
     
     // --- PLAYER ROTATION (aim-controlled for controllable player; charge is power only) ---
     if (isControllable) {
-      let targetRotation = AIM_START_ANGLE
+      let targetRotation = aimToPlayerRotation(AIM_NEUTRAL)
       const liveAim = useInputStore.getState().aim
 
       if (isCharging) {
         targetRotation = aimToPlayerRotation(liveAim)
       } else if (!isSwinging) {
-        targetRotation = AIM_START_ANGLE
+        targetRotation = aimToPlayerRotation(AIM_NEUTRAL)
       } else {
         targetRotation = currentRotation.current
       }
@@ -605,30 +686,44 @@ export default function Player({
         
         {/* Charge indicator ring - only shows when it's this player's turn AND charging */}
         {isCurrentStriker && isCharging && (
-          <ChargeIndicator aim={aim} power={chargeLevel} color={color} />
+          <ChargeIndicator
+            aim={aim}
+            power={chargeLevel}
+            loft={isControllable ? loft : LOFT_NEUTRAL}
+            color={color}
+          />
         )}
-        
+
         {/* Split-step indicator */}
         {splitStepActive && (
           <SplitStepIndicator color={color} />
         )}
         
-        {/* Shot type text on ground plane (same as charge indicator) */}
+        {/* Live shot type — primary readout (auto type, not sector hint vocabulary). */}
         {isCurrentStriker && isCharging && currentShotName && (
           <Text
-            position={[0, 0.03, 0]}
+            position={[0, 0.06, -PLAYER_SIZE * 0.95]}
             rotation={[-Math.PI / 2, 0, 0]}
-            fontSize={0.35}
+            font={FONT_UTILITY}
+            fontSize={0.38}
             color={color}
+            fillOpacity={displayAlpha(0.95)}
             anchorX="center"
             anchorY="middle"
-            outlineWidth={0.015}
+            outlineWidth={0.02}
             outlineColor={HEX.void}
+            outlineOpacity={displayAlpha(0.9)}
+            material-depthWrite={false}
           >
             {currentShotName.toUpperCase()}
           </Text>
         )}
       </group>
+
+      {/* Racquet → shot aim beam (world space). Forward arc only. */}
+      {isCurrentStriker && isCharging && isControllable && racquetReady && (
+        <ShotAimBeam color={color} racquetPosRef={racquetPositionRef} />
+      )}
       
       {/* Racquet - primitive geometry with physics sensor and swing animation */}
       {racquetReady && (
@@ -656,90 +751,291 @@ export default function Player({
   )
 }
 
+/** World-space length of the racquet → shot aim beam (metres). */
+const SHOT_AIM_BEAM_LENGTH = 2.8
+
+const _aimBeamDir = new THREE.Vector3()
+const _aimBeamTip = new THREE.Vector3()
+
 /**
- * Aim arc + power ring during charge. Outer ring = available aim range / current aim;
- * inner ring fill = charge power (independent of aim).
+ * Line from the racquet along the charge aim (180° front-wall cone + loft).
+ * Same mapping as the floor needle — serve ballistics stay narrow, but the guide
+ * must read the full stick so it does not look stuck on −Z.
+ * Updated in useFrame so it tracks the kinematic racquet without React re-renders.
+ */
+function ShotAimBeam({
+  color,
+  racquetPosRef,
+}: {
+  color: string
+  racquetPosRef: React.MutableRefObject<THREE.Vector3>
+}): React.ReactElement {
+  const tipRef = useRef<THREE.Mesh>(null)
+  const geom = useMemo(() => {
+    const g = new THREE.BufferGeometry()
+    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3))
+    return g
+  }, [])
+  const mat = useMemo(
+    () =>
+      new THREE.LineBasicMaterial({
+        color,
+        transparent: true,
+        opacity: displayAlpha(0.95),
+        depthWrite: false,
+      }),
+    [color],
+  )
+  const lineObj = useMemo(() => new THREE.Line(geom, mat), [geom, mat])
+
+  useFrame(() => {
+    const { aim, loft } = useInputStore.getState()
+    _aimBeamDir.copy(aimPreviewDirection(aim, loft))
+
+    const origin = racquetPosRef.current
+    _aimBeamTip.copy(origin).addScaledVector(_aimBeamDir, SHOT_AIM_BEAM_LENGTH)
+
+    const pos = lineObj.geometry.attributes.position as THREE.BufferAttribute
+    pos.setXYZ(0, origin.x, origin.y, origin.z)
+    pos.setXYZ(1, _aimBeamTip.x, _aimBeamTip.y, _aimBeamTip.z)
+    pos.needsUpdate = true
+    lineObj.geometry.computeBoundingSphere()
+
+    const tip = tipRef.current
+    if (tip) tip.position.copy(_aimBeamTip)
+  })
+
+  return (
+    <group>
+      <primitive object={lineObj} />
+      <mesh ref={tipRef}>
+        <sphereGeometry args={[0.045, 10, 10]} />
+        <meshBasicMaterial
+          color={color}
+          transparent
+          opacity={displayAlpha(0.95)}
+          depthWrite={false}
+        />
+      </mesh>
+    </group>
+  )
+}
+
+/**
+ * Aim cone + length ring during charge. Outer arc = 180° toward the front wall only
+ * (not a full circle); radial needle = left/right aim; inner ring fill = shot length
+ * (charge). Left loft rail always on during charge (mid tick = neutral height).
+ * Soft LOB / STRAIGHT / SMASH / BOAST labels are hints only — no snap.
  */
 function ChargeIndicator({
   aim,
   power,
+  loft,
   color,
 }: {
   aim: number
   power: number
+  loft: number
   color: string
 }) {
   const fullArcLength = AIM_ARC_RANGE
   const quantisedAim = Math.round(aim * CHARGE_ARC_STEPS) / CHARGE_ARC_STEPS
   const quantisedPower = Math.round(power * CHARGE_ARC_STEPS) / CHARGE_ARC_STEPS
-  const aimArcLength = Math.max(fullArcLength * quantisedAim, 0.001)
+  const quantisedLoft = Math.round(loft * CHARGE_ARC_STEPS) / CHARGE_ARC_STEPS
   const powerArcLength = Math.max(fullArcLength * quantisedPower, 0.001)
-  const startOffset = -Math.PI / 2
+  // Floor ring: θ=0 right → θ=π/2 front → θ=π left (front semicircle only).
+  const coneStart = 0
+  const needleLength = aimOuterNeedleLength()
+  const needle = floorNeedlePose(quantisedAim, needleLength)
+  // Length fills left → right along the same cone.
+  const powerStart = Math.PI - powerArcLength
 
   const aimInner = PLAYER_SIZE * 1.6
   const aimOuter = PLAYER_SIZE * 2.0
   const powerInner = PLAYER_SIZE * 1.15
   const powerOuter = PLAYER_SIZE * 1.45
-  const needleLength = aimOuter + PLAYER_SIZE * 0.4
+  const loftRailX = -(aimOuter + PLAYER_SIZE * 0.45)
+  const loftHalf = PLAYER_SIZE * 1.15
+  const loftMarkerY = (quantisedLoft - LOFT_NEUTRAL) * 2 * loftHalf
+  const needleWidth = PLAYER_SIZE * 0.28
+  const needleThickness = PLAYER_SIZE * 0.08
+  const sectorHints = chargeRingHintPoses({
+    aimLabelR: aimOuter + PLAYER_SIZE * 0.55,
+    loftRailX: loftRailX - PLAYER_SIZE * 0.55,
+    loftHalf,
+  })
+  const activeHints = chargeRingHintActivation(quantisedAim, quantisedLoft)
 
   return (
-    <group position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+    <group position={[0, 0.04, 0]} rotation={[-Math.PI / 2, 0, 0]}>
       <mesh>
-        <ringGeometry args={[aimInner, aimOuter, 32, 1, startOffset, fullArcLength]} />
+        <ringGeometry args={[aimInner, aimOuter, 32, 1, coneStart, fullArcLength]} />
         <meshBasicMaterial
           color={color}
           transparent
-          opacity={displayAlpha(0.15)}
+          opacity={displayAlpha(0.28)}
+          depthWrite={false}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+
+      {/* Arc end caps — make the 180° limit readable vs a full ring. */}
+      {[0, Math.PI].map((theta) => (
+        <mesh
+          key={theta}
+          position={[Math.cos(theta) * ((aimInner + aimOuter) * 0.5), Math.sin(theta) * ((aimInner + aimOuter) * 0.5), 0.001]}
+          rotation={[0, 0, theta]}
+        >
+          <planeGeometry args={[(aimOuter - aimInner) * 1.15, PLAYER_SIZE * 0.1]} />
+          <meshBasicMaterial
+            color={color}
+            transparent
+            opacity={displayAlpha(0.85)}
+            depthWrite={false}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+      ))}
+
+      <mesh>
+        <ringGeometry args={[powerInner, powerOuter, 32, 1, coneStart, fullArcLength]} />
+        <meshBasicMaterial
+          color={color}
+          transparent
+          opacity={displayAlpha(0.22)}
+          depthWrite={false}
           side={THREE.DoubleSide}
         />
       </mesh>
 
       <mesh>
-        <ringGeometry args={[aimInner, aimOuter, 32, 1, startOffset, aimArcLength]} />
+        <ringGeometry args={[powerInner, powerOuter, 32, 1, powerStart, powerArcLength]} />
         <meshBasicMaterial
           color={color}
           transparent
-          opacity={displayAlpha(0.7)}
+          opacity={displayAlpha(0.72)}
+          depthWrite={false}
           side={THREE.DoubleSide}
         />
       </mesh>
 
-      <mesh>
-        <ringGeometry args={[powerInner, powerOuter, 32, 1, startOffset, fullArcLength]} />
+      {/* Length-band ticks: tap / drive / full length */}
+      {POWER_BAND_LEVELS.map((level) => {
+        const theta = aimToFloorNeedleTheta(level)
+        const midR = (powerInner + powerOuter) * 0.5
+        return (
+          <mesh
+            key={level}
+            position={[Math.cos(theta) * midR, Math.sin(theta) * midR, 0.001]}
+            rotation={[0, 0, theta]}
+          >
+            <planeGeometry
+              args={[(powerOuter - powerInner) * 1.2, PLAYER_SIZE * 0.08]}
+            />
+            <meshBasicMaterial
+              color={color}
+              transparent
+              opacity={displayAlpha(0.75)}
+              depthWrite={false}
+              side={THREE.DoubleSide}
+            />
+          </mesh>
+        )
+      })}
+
+      {/* Radial needle — offset into the forward ray (not a diameter through the body). */}
+      <mesh
+        position={[needle.x, needle.y, 0.002]}
+        rotation={[0, 0, needle.theta]}
+      >
+        <planeGeometry args={[needleLength, needleThickness]} />
         <meshBasicMaterial
           color={color}
           transparent
-          opacity={displayAlpha(0.12)}
+          opacity={displayAlpha(1)}
+          depthWrite={false}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+      <mesh
+        position={[
+          Math.cos(needle.theta) * needleLength,
+          Math.sin(needle.theta) * needleLength,
+          0.003,
+        ]}
+      >
+        <circleGeometry args={[needleWidth * 0.35, 10]} />
+        <meshBasicMaterial
+          color={color}
+          transparent
+          opacity={displayAlpha(0.95)}
+          depthWrite={false}
           side={THREE.DoubleSide}
         />
       </mesh>
 
-      <mesh>
-        <ringGeometry args={[powerInner, powerOuter, 32, 1, startOffset, powerArcLength]} />
+      {/* Height rail — always on while charging; mid tick = neutral loft. */}
+      <mesh position={[loftRailX, 0, 0.001]}>
+        <planeGeometry args={[PLAYER_SIZE * 0.08, loftHalf * 2]} />
         <meshBasicMaterial
           color={color}
           transparent
-          opacity={displayAlpha(0.55)}
+          opacity={displayAlpha(0.35)}
+          depthWrite={false}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+      <mesh position={[loftRailX, 0, 0.002]}>
+        <planeGeometry args={[PLAYER_SIZE * 0.22, PLAYER_SIZE * 0.05]} />
+        <meshBasicMaterial
+          color={color}
+          transparent
+          opacity={displayAlpha(0.6)}
+          depthWrite={false}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+      <mesh position={[loftRailX, loftMarkerY, 0.003]}>
+        <circleGeometry args={[PLAYER_SIZE * 0.12, 12]} />
+        <meshBasicMaterial
+          color={color}
+          transparent
+          opacity={displayAlpha(0.95)}
+          depthWrite={false}
           side={THREE.DoubleSide}
         />
       </mesh>
 
-      <mesh rotation={[0, 0, startOffset + aimArcLength]}>
-        <planeGeometry args={[PLAYER_SIZE * 0.32, needleLength]} />
-        <meshBasicMaterial
-          color={color}
-          transparent
-          opacity={displayAlpha(0.9)}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
+      {/* Sector hints — continuous aim; active stick sector brightens, never snaps. */}
+      {sectorHints.map((hint) => {
+        const active = activeHints[hint.key]
+        return (
+          <Text
+            key={hint.key}
+            position={[hint.x, hint.y, 0.004]}
+            font={FONT_UTILITY}
+            fontSize={PLAYER_SIZE * (active ? 0.32 : 0.24)}
+            color={color}
+            fillOpacity={displayAlpha(active ? 0.92 : 0.38)}
+            anchorX="center"
+            anchorY="middle"
+            outlineWidth={active ? 0.014 : 0.01}
+            outlineColor={HEX.void}
+            outlineOpacity={displayAlpha(active ? 0.85 : 0.5)}
+            material-depthWrite={false}
+          >
+            {hint.id}
+          </Text>
+        )
+      })}
 
       <mesh>
         <circleGeometry args={[0.1, 16]} />
         <meshBasicMaterial
           color={color}
           transparent
-          opacity={displayAlpha(0.5)}
+          opacity={displayAlpha(0.65)}
+          depthWrite={false}
           side={THREE.DoubleSide}
         />
       </mesh>
@@ -747,14 +1043,19 @@ function ChargeIndicator({
   )
 }
 
+function aimOuterNeedleLength(): number {
+  return PLAYER_SIZE * 2.0 + PLAYER_SIZE * 0.4
+}
+
 function SplitStepIndicator({ color }: { color: string }) {
   return (
-    <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+    <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
       <circleGeometry args={[PLAYER_SIZE * 1.2, 6]} />
       <meshBasicMaterial
         color={color}
         transparent
         opacity={displayAlpha(0.15)}
+        depthWrite={false}
         side={THREE.DoubleSide}
       />
     </mesh>
