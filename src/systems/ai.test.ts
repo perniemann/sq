@@ -6,6 +6,7 @@ import {
   updateAthlete,
   predictInterceptPosition,
   calculateAIShot,
+  aiRallyAim,
   shouldPlayDrop,
   shouldStrike,
   yieldTarget,
@@ -179,6 +180,24 @@ function sampleBallPositions(): THREE.Vector3[] {
   return positions
 }
 
+describe('aiRallyAim', () => {
+  it('aims left of centre when the opponent is on the right', () => {
+    expect(aiRallyAim(1.5, 0)).toBeCloseTo(-0.2, 8)
+    expect(aiRallyAim(1.5, 1)).toBeCloseTo(-0.7, 8)
+  })
+
+  it('aims right of centre when the opponent is on the left', () => {
+    expect(aiRallyAim(-1.5, 0)).toBeCloseTo(0.2, 8)
+    expect(aiRallyAim(-1.5, 1)).toBeCloseTo(0.7, 8)
+  })
+
+  it('does not key off the striker — same opponent X, same aim', () => {
+    // Regression: the old helper used the striker's X, so an AI standing left while the
+    // human held the right box always fired into the left wall.
+    expect(aiRallyAim(2.0, 0.5)).toBeLessThan(0)
+  })
+})
+
 describe('calculateAIShot', () => {
   /**
    * The regression this replaces: firing at a fixed elevation made the arc depend on
@@ -348,7 +367,7 @@ describe('calculateAIShot', () => {
   })
 
   /**
-   * The bug this covers: `AI_DROP_SPEED` is 8 m/s, and a projectile's range is v²/g, so a
+   * The bug this covers: soft `AI_DROP_SPEED` and a projectile's range is v²/g, so a
    * drop can only carry 6.5 m — less than the 7.9 m from the back of the court. Every
    * "drop" chosen from deep landed on the floor before the front wall, which is NOT UP.
    * In play it read as a random unforced error.
@@ -484,6 +503,7 @@ describe('shouldStrike', () => {
       ballPosition: new THREE.Vector3(0, 0.5, 1),
       ballVelocity: new THREE.Vector3(0, 0, 0),
       config,
+      returnable: true,
     })).toBe(false)
   })
 
@@ -493,6 +513,7 @@ describe('shouldStrike', () => {
       ballPosition: new THREE.Vector3(0, 2.5, 0.6),
       ballVelocity: new THREE.Vector3(0, 0, 5),
       config,
+      returnable: true,
     })).toBe(false)
   })
 
@@ -502,16 +523,28 @@ describe('shouldStrike', () => {
       ballPosition: new THREE.Vector3(0, 0.05, 0.6),
       ballVelocity: new THREE.Vector3(0, 0, 5),
       config,
+      returnable: true,
     })).toBe(false)
   })
 
-  it('swings at a ball closing on the athlete', () => {
+  it('swings at a ball closing on the athlete when returnable', () => {
     expect(shouldStrike({
       state,
       ballPosition: new THREE.Vector3(0, 0.5, -0.5),
       ballVelocity: new THREE.Vector3(0, 0, 5),
       config,
+      returnable: true,
     })).toBe(true)
+  })
+
+  it('does not charge when the prior return has not hit the front wall', () => {
+    expect(shouldStrike({
+      state,
+      ballPosition: new THREE.Vector3(0, 0.5, -0.5),
+      ballVelocity: new THREE.Vector3(0, 0, 5),
+      config,
+      returnable: false,
+    })).toBe(false)
   })
 
   /**
@@ -525,6 +558,7 @@ describe('shouldStrike', () => {
       ballPosition: new THREE.Vector3(0, 0.5, 0.5),
       ballVelocity: new THREE.Vector3(0, 0, -12),
       config,
+      returnable: true,
     })).toBe(false)
   })
 })

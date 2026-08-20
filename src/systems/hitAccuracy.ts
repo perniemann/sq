@@ -59,8 +59,8 @@ export const ACCURACY_EFFECTS = {
   /** Maximum power multiplier at 100% accuracy */
   maxPowerMultiplier: 1.0,
   
-  /** Maximum direction deviation at 0% accuracy (radians) — ~15°; charge/aim still steer */
-  maxDirectionDeviation: Math.PI / 12,
+  /** Maximum direction deviation at 0% accuracy (radians) — ~22.5°; charge/aim still steer */
+  maxDirectionDeviation: Math.PI / 8,
   
   /** Minimum direction deviation at 100% accuracy (radians) */
   minDirectionDeviation: 0,
@@ -224,11 +224,13 @@ export function calculateHitAccuracy(
  *
  * @param baseVector - The base shot vector (direction, optionally already scaled)
  * @param accuracy - Accuracy value (0-1)
+ * @param rng - Optional unit random in [0,1); defaults to Math.random (seedable in tests)
  * @returns Modified vector with accuracy effects applied
  */
 export function applyAccuracyToShot(
   baseVector: THREE.Vector3,
-  accuracy: number
+  accuracy: number,
+  rng: () => number = Math.random,
 ): { modifiedVector: THREE.Vector3; modifiers: ShotModifiers } {
   // Calculate power multiplier
   const powerMultiplier = ACCURACY_EFFECTS.minPowerMultiplier + 
@@ -237,10 +239,9 @@ export function applyAccuracyToShot(
   // Calculate maximum deviation for this accuracy level
   const maxDeviation = ACCURACY_EFFECTS.maxDirectionDeviation * (1 - accuracy)
   
-  // Generate random deviation angles (both horizontal and vertical)
-  // Use gaussian-like distribution for more realistic feel (center-weighted)
-  const randomFactor1 = (Math.random() + Math.random() + Math.random()) / 3 - 0.5 // -0.5 to 0.5, center-weighted
-  const randomFactor2 = (Math.random() + Math.random() + Math.random()) / 3 - 0.5
+  // Gaussian-like centre-weighted samples in [-0.5, 0.5]
+  const randomFactor1 = (rng() + rng() + rng()) / 3 - 0.5
+  const randomFactor2 = (rng() + rng() + rng()) / 3 - 0.5
   
   const horizontalDeviation = randomFactor1 * 2 * maxDeviation
   const verticalDeviation = randomFactor2 * maxDeviation * 0.5 // Less vertical deviation
@@ -318,7 +319,7 @@ export function getAccuracyColor(accuracy: number): string {
  * 
  * @param ballPosition - Ball world position (where we want hit zone to be)
  * @param playerPosition - Current player position (for direction calculation)
- * @param chargeRotation - Current charge rotation in radians (0 to ~3.49 for 200°)
+ * @param chargeRotation - Current charge rotation in radians (0 to ±π/2 on the 180° cone)
  * @param isCharging - Whether player is currently charging
  * @returns Optimal position for player to stand
  */

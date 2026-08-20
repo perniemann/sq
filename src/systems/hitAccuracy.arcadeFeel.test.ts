@@ -12,7 +12,7 @@ describe('arcade return forgiveness (accuracy)', () => {
   })
 
   it('caps aim noise so walls stay readable', () => {
-    expect(ACCURACY_EFFECTS.maxDirectionDeviation).toBeLessThanOrEqual(Math.PI / 10 + 1e-9)
+    expect(ACCURACY_EFFECTS.maxDirectionDeviation).toBeLessThanOrEqual(Math.PI / 8 + 1e-9)
   })
 
   it('widens the sweet spot for arcade contacts', () => {

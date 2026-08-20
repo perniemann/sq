@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest'
 import {
   isInStrikeRange,
   isInSwingHitWindow,
+  swingTimingQuality,
+  combineHitAccuracy,
   STRIKE_RANGE_M,
 } from './hitTiming'
 import type { SwingState } from './swingAnimation'
@@ -47,5 +49,25 @@ describe('isInSwingHitWindow', () => {
     expect(isInSwingHitWindow(swing('followThrough', 0.8))).toBe(true)
     expect(isInSwingHitWindow(swing('followThrough', 0.9))).toBe(false)
     expect(isInSwingHitWindow(swing('recovery', 0.1))).toBe(false)
+  })
+})
+
+describe('swingTimingQuality / combineHitAccuracy', () => {
+  it('peaks at contact and is continuous through the swing', () => {
+    expect(swingTimingQuality(swing('contact', 0.5))).toBe(1)
+    expect(swingTimingQuality(swing('forward', 1))).toBeGreaterThan(
+      swingTimingQuality(swing('forward', 0.1)),
+    )
+    expect(swingTimingQuality(swing('followThrough', 0.1))).toBeGreaterThan(
+      swingTimingQuality(swing('followThrough', 0.9)),
+    )
+    expect(swingTimingQuality(null)).toBeGreaterThan(0)
+    expect(swingTimingQuality(null)).toBeLessThan(1)
+  })
+
+  it('pulls spatial accuracy down when timing is poor', () => {
+    expect(combineHitAccuracy(1, 1)).toBeCloseTo(1, 5)
+    expect(combineHitAccuracy(1, 0)).toBeCloseTo(0.4, 5)
+    expect(combineHitAccuracy(0.5, 0.5)).toBeLessThan(combineHitAccuracy(0.5, 1))
   })
 })

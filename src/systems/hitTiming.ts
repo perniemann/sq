@@ -35,3 +35,35 @@ export function isInSwingHitWindow(swingState: SwingState | null | undefined): b
   if (phase === 'followThrough' && progress <= 0.8) return true
   return false
 }
+
+/**
+ * Continuous 0–1 quality of swing timing at contact.
+ * Ideal at `contact` / late `forward`; decays through follow-through and early prep.
+ * Proximity hits without an active swing get a middling default (not a free perfect).
+ */
+export function swingTimingQuality(swingState: SwingState | null | undefined): number {
+  if (!swingState?.isSwinging) return 0.55
+  const { phase, progress } = swingState
+  const p = Math.max(0, Math.min(1, progress))
+  if (phase === 'contact') return 1
+  if (phase === 'forward') {
+    // Ramp toward contact at the end of the forward swing.
+    return 0.35 + 0.65 * p
+  }
+  if (phase === 'followThrough') {
+    // Early follow-through is still clean; late is rushed.
+    return Math.max(0.15, 1 - p * 0.85)
+  }
+  if (phase === 'backswing') return 0.4
+  return 0.35
+}
+
+/**
+ * Blend spatial sweet-spot accuracy with swing timing.
+ * Timing 0 keeps 40% of spatial; timing 1 keeps full spatial.
+ */
+export function combineHitAccuracy(spatial: number, timing: number): number {
+  const s = Math.max(0, Math.min(1, spatial))
+  const t = Math.max(0, Math.min(1, timing))
+  return Math.max(0, Math.min(1, s * (0.4 + 0.6 * t)))
+}

@@ -294,17 +294,24 @@ export function updateAthlete(input: AthleteUpdateInput): AIState {
   return newState
 }
 
-/** Rally drive speed in m/s at zero and at full charge — arcade-readable pace. */
-export const AI_SHOT_BASE_SPEED = 13
-export const AI_SHOT_POWER_SPEED = 6
+/**
+ * Rally drive speed in m/s at zero and at full charge — lockstep with player
+ * `SHOT_PACE_SCALE` (~1.14× prior 13 / 6).
+ */
+export const AI_SHOT_BASE_SPEED = 15
+export const AI_SHOT_POWER_SPEED = 7
 
 /**
- * Where on the front wall the AI aims: tight above the 0.48 m tin, as a real player does,
- * and low enough that the rebound arc stays well under the 5.64 m clear height.
+ * Where on the front wall the AI aims: tight above the tin, kept mid-wall so
+ * pace + loft do not pin every rally under the out-line (demo visual tune).
  */
-const AI_TARGET_WALL_HEIGHT = { min: 0.7, max: 1.6 }
+const AI_TARGET_WALL_HEIGHT = { min: 0.65, max: 1.2 }
 
-/** A drop is aimed just over the tin and hit softly, so it dies in a front corner. */
+/**
+ * A drop is aimed just over the tin and hit softly, so it dies in a front corner.
+ * Soft envelope stays at 8 m/s (not pace-scaled) so `dropCarries` still rejects
+ * back-court / wide-aim soft shots; drives use the scaled base/power speeds.
+ */
 const AI_DROP_WALL_HEIGHT = { min: 0.55, max: 0.85 }
 export const AI_DROP_SPEED = 8
 
@@ -364,8 +371,14 @@ const AI_TARGET_WALL_MARGIN = 0.8
  * NOT UP if it does not. Both are reasonable outcomes for a mis-hit, so the aim is deliberately
  * not clamped to the wall — clamping would pile misses up at the wall's edge instead.
  */
-const AI_MISS_HEIGHT = 4.0
-const AI_MISS_WIDTH = 4.0
+/**
+ * How far a fully inaccurate shot misses its aim point by (metres). Scaled by
+ * `1 - accuracy`. Height miss used to be 4 m and visually pinned every demo rally
+ * under the out-line; keep height scatter on the tin/service band, width near the
+ * side-wall edge (see `keeps even the worst mis-hit…` test).
+ */
+const AI_MISS_HEIGHT = 0.8
+const AI_MISS_WIDTH = 2.2
 
 export interface AIShotInput {
   ballPosition: THREE.Vector3
@@ -420,7 +433,25 @@ function launchAngle(speed: number, distance: number, rise: number): number | nu
 }
 
 /**
+ * Pick where across the front wall an AI rally shot is aimed, in [-1, 1].
+ *
+ * Biased away from the *opponent*, not the striker: aiming away from self made every return
+ * from the human's usual (+X) service side slam into the left wall. A small random width
+ * keeps length/angle variety without locking one corner.
+ *
+ * @param opponentX - opponent floor X (world); ≥0 → aim left half, else right half
+ * @param roll - sample in [0, 1), supplied by the caller so this stays pure
+ */
+export function aiRallyAim(opponentX: number, roll: number): number {
+  const away = opponentX >= 0 ? -1 : 1
+  return away * (0.2 + Math.max(0, Math.min(1, roll)) * 0.5)
+}
+
+/**
  * Aim an AI rally shot at a point on the front wall.
+ *
+ * AI never uses the human side-wall-first rally fold corridor — front-wall
+ * ballistic solve keeps opponent returns in play (skeptic: AI front clamp).
  *
  * Firing at a fixed elevation, as this used to, made the shot's arc depend entirely on
  * where the ball happened to be: from the back of the court a 0.25 elevation at 35 m/s
@@ -434,7 +465,13 @@ export function calculateAIShot(input: AIShotInput): { direction: THREE.Vector3;
   const band = drop ? AI_DROP_WALL_HEIGHT : AI_TARGET_WALL_HEIGHT
   const miss = 1 - THREE.MathUtils.clamp(accuracy, 0, 1)
   const targetX = lateralAim * (COURT.width / 2 - AI_TARGET_WALL_MARGIN) + lateralMiss * miss * AI_MISS_WIDTH
-  const targetY = THREE.MathUtils.lerp(band.min, band.max, heightAim) + heightMiss * miss * AI_MISS_HEIGHT
+  // Cap the ceiling so miss cannot aim into the gallery roof (demo visual); still
+  // allow tin misses below the band for rally endings.
+  const targetY = THREE.MathUtils.clamp(
+    THREE.MathUtils.lerp(band.min, band.max, heightAim) + heightMiss * miss * AI_MISS_HEIGHT,
+    0.05,
+    COURT.height - 0.4,
+  )
 
   const deltaX = targetX - ballPosition.x
   const deltaZ = FRONT_WALL_Z - ballPosition.z
@@ -475,17 +512,21 @@ export interface StrikeCheckInput {
   ballPosition: THREE.Vector3
   ballVelocity: THREE.Vector3
   config: AIConfig
+  /** False until the prior return has hit the front wall (`canHit` / WSF 6.2). */
+  returnable: boolean
 }
 
 /**
  * Whether the athlete should start charging a shot.
  *
  * Charging takes 200–500 ms, so this looks ahead rather than waiting for the ball to
- * arrive. The former zone tests are gone: whose turn it is comes from `currentStriker`,
- * which is what the zone tests were standing in for.
+ * arrive. Whose turn it is comes from `currentStriker` at the call site; `returnable`
+ * blocks charging while the prior shot has not yet completed on the front wall.
  */
 export function shouldStrike(input: StrikeCheckInput): boolean {
-  const { state, ballPosition, ballVelocity, config } = input
+  const { state, ballPosition, ballVelocity, config, returnable } = input
+
+  if (!returnable) return false
 
   // A stationary ball is dead; swinging at it would loop forever.
   if (ballVelocity.length() < 0.2) return false

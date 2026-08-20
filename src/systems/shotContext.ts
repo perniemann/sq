@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { COURT } from './court'
+import { foldAimForRally } from './aimRotation'
 
 /**
  * DYNAMIC SHOT CONTEXT SYSTEM
@@ -41,6 +42,11 @@ export interface ShotContext {
   playerRotation: number
   /** Charge power level (0-1) */
   chargePower: number
+  /**
+   * Player loft stick (0–1). Neutral 0.5 leaves `BASE_SHOT_ANGLES` unchanged;
+   * lower → kill/rail bias, higher → lob bias.
+   */
+  loft: number
   /** Raw ball Y position for precise calculations */
   ballY: number
   /** Raw player X position for sidewall detection */
@@ -86,15 +92,21 @@ const COURT_ZONES = {
 /** Distance from sidewall to enable boast shots */
 const SIDEWALL_THRESHOLD = 1.2  // meters
 
-/** Base angles for each shot type */
+/** Base angles for each shot type — verticals kept modest so pace retunes do not roof. */
 const BASE_SHOT_ANGLES: Record<ShotType, ShotAngles> = {
-  drive: { horizontal: 0, vertical: 0.12 },
-  crossCourt: { horizontal: 0.35, vertical: 0.14 },
-  boast: { horizontal: 0.7, vertical: 0.18 },
-  drop: { horizontal: 0.08, vertical: 0.25 },
-  lob: { horizontal: 0.05, vertical: 0.55 },
+  drive: { horizontal: 0, vertical: 0.09 },
+  crossCourt: { horizontal: 0.35, vertical: 0.1 },
+  boast: { horizontal: 0.9, vertical: 0.12 },
+  drop: { horizontal: 0.08, vertical: 0.22 },
+  lob: { horizontal: 0.05, vertical: 0.45 },
   kill: { horizontal: 0, vertical: -0.08 },
 }
+
+/** Full loft-stick travel (±0.5 from neutral) adds this much pre-normalise Y. */
+export const LOFT_VERTICAL_SCALE = 0.55
+
+/** Neutral loft stick — prior auto angles unchanged. */
+export const LOFT_NEUTRAL = 0.5
 
 /** Power multipliers for each shot type */
 const SHOT_POWER_MULTIPLIERS: Record<ShotType, { base: number; chargeScale: number }> = {
@@ -128,7 +140,8 @@ export function analyzeShotContext(
   ballPos: THREE.Vector3,
   playerRotation: number,
   chargePower: number,
-  hitAccuracy: number
+  hitAccuracy: number,
+  loft: number = LOFT_NEUTRAL,
 ): ShotContext {
   // Classify ball height
   let ballHeight: BallHeight = 'medium'
@@ -162,6 +175,7 @@ export function analyzeShotContext(
     hitAccuracy,
     playerRotation,
     chargePower,
+    loft: Math.max(0, Math.min(1, loft)),
     ballY: ballPos.y,
     playerX: playerPos.x,
     playerZ: playerPos.z,
@@ -181,15 +195,15 @@ export function analyzeShotContext(
  * 3. Default to drive or cross-court based on rotation
  */
 export function selectShotType(context: ShotContext): ShotType {
-  const { ballHeight, courtPosition, nearWall, playerRotation, chargePower } = context
+  const { ballHeight, courtPosition, nearWall, playerRotation, chargePower, loft } = context
 
   // Normalize rotation to 0-2π range
   const normalizedRotation = ((playerRotation % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)
-  
-  // Determine if player is rotated toward a sidewall
-  // 0 = facing front wall (-Z), π/2 = facing right (+X), π = facing back, 3π/2 = facing left (-X)
-  const facingRight = normalizedRotation > Math.PI / 4 && normalizedRotation < 3 * Math.PI / 4
-  const facingLeft = normalizedRotation > 5 * Math.PI / 4 && normalizedRotation < 7 * Math.PI / 4
+
+  // Yaw of a −Z forward: +π/2 faces −X (left wall), 3π/2 faces +X (right wall).
+  // (Older comments had these swapped — they matched the inverted aim stick, not world ±X.)
+  const facingLeft = normalizedRotation > Math.PI / 4 && normalizedRotation < 3 * Math.PI / 4
+  const facingRight = normalizedRotation > 5 * Math.PI / 4 && normalizedRotation < 7 * Math.PI / 4
 
   // LOW BALL: Must lift - lob or drive with upward angle
   if (ballHeight === 'low') {
@@ -210,7 +224,7 @@ export function selectShotType(context: ShotContext): ShotType {
     return 'kill'
   }
 
-  // NEAR SIDEWALL + ROTATED TOWARD IT: Boast
+  // NEAR SIDEWALL + ROTATED TOWARD IT: Boast (before loft bias — wall aim wins over height).
   if (nearWall === 'right' && facingRight) {
     return 'boast'
   }
@@ -218,7 +232,15 @@ export function selectShotType(context: ShotContext): ShotType {
     return 'boast'
   }
 
-  // FRONT COURT + soft touch: drop. Floor is `chargeDurationToPower`'s MIN_POWER (0.3),
+  // Loft stick intent — preview and strike share the same type bias (height ≠ length).
+  if (loft >= 0.75 && courtPosition !== 'front') {
+    return 'lob'
+  }
+  if (loft <= 0.25 && ballHeight === 'high') {
+    return 'kill'
+  }
+
+  // FRONT COURT + soft touch: drop. Floor is `chargeDurationToPower`'s MIN_SHOT_POWER (0.3),
   // so `< 0.3` never fired and every front-court tap read as DRIVE.
   if (courtPosition === 'front' && chargePower <= 0.4) {
     return 'drop'
@@ -226,7 +248,7 @@ export function selectShotType(context: ShotContext): ShotType {
 
   // ROTATION-BASED: Cross-court vs drive
   // Angular distance from facing the front wall, so a rotation just under 2π counts as
-  // slightly off-centre rather than nearly a full turn. π/8 ≈ aim 0.11 on the 200° arc.
+  // slightly off-centre rather than nearly a full turn. π/8 ≈ aim offset on the 180° cone.
   const rotationFromCenter = Math.min(normalizedRotation, 2 * Math.PI - normalizedRotation)
   if (rotationFromCenter > Math.PI / 8 && rotationFromCenter < 5 * Math.PI / 6) {
     return 'crossCourt'
@@ -265,23 +287,19 @@ export function calculateShotAngles(
     }
   }
 
-  // Apply accuracy modifiers (poor accuracy = deviation)
-  if (context.hitAccuracy < 0.7) {
-    const inaccuracyFactor = 1 - context.hitAccuracy
-    // Random horizontal deviation based on inaccuracy
-    angles.horizontal += (Math.random() - 0.5) * inaccuracyFactor * 0.4
-    // Slight vertical deviation too
-    angles.vertical += (Math.random() - 0.5) * inaccuracyFactor * 0.15
-  }
+  // Aim deviation lives only in `applyAccuracyToShot` (seedable) — no double jitter here.
 
   // Boast bias in local space; world aim comes from `playerRotation` in `calculateShot`.
   if (shotType === 'boast') {
     if (context.nearWall === 'left') {
-      angles.horizontal = -Math.abs(angles.horizontal) - 0.2
+      angles.horizontal = -Math.abs(angles.horizontal) - 0.35
     } else if (context.nearWall === 'right') {
-      angles.horizontal = Math.abs(angles.horizontal) + 0.2
+      angles.horizontal = Math.abs(angles.horizontal) + 0.35
     }
   }
+
+  // Player loft stick — neutral leaves base + height modifiers alone.
+  angles.vertical += (context.loft - LOFT_NEUTRAL) * LOFT_VERTICAL_SCALE
 
   return angles
 }
@@ -316,16 +334,13 @@ export function calculateShot(context: ShotContext): ShotResult {
   // Calculate power
   const powerMultiplier = calculatePowerMultiplier(shotType, context.chargePower)
 
-  // Local aim toward the front wall, then yaw by the player's facing (aim control).
-  const direction = new THREE.Vector3(angles.horizontal, angles.vertical, -1)
-    .normalize()
-    .applyAxisAngle(UP, context.playerRotation)
-
-  // Do not let a shot leave aimed at the back wall behind the striker.
-  if (direction.z > 0) {
-    direction.z = -Math.min(0.05, Math.abs(direction.z) + 0.05)
-    direction.normalize()
-  }
+  // Local aim, yaw by facing, then rally fold (side-wall-first corridor at extremes).
+  const direction = foldAimForRally(
+    new THREE.Vector3(angles.horizontal, angles.vertical, -1)
+      .normalize()
+      .applyAxisAngle(UP, context.playerRotation),
+    'rally',
+  )
 
   return {
     type: shotType,

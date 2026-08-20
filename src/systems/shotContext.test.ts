@@ -1,6 +1,13 @@
 import { describe, it, expect } from 'vitest'
 import * as THREE from 'three'
-import { calculateShot, selectShotType, type ShotContext } from './shotContext'
+import {
+  calculateShot,
+  calculateShotAngles,
+  selectShotType,
+  LOFT_VERTICAL_SCALE,
+  type ShotContext,
+} from './shotContext'
+import { aimToPlayerRotation } from './aimRotation'
 
 function baseContext(overrides: Partial<ShotContext> = {}): ShotContext {
   return {
@@ -10,6 +17,7 @@ function baseContext(overrides: Partial<ShotContext> = {}): ShotContext {
     hitAccuracy: 1,
     playerRotation: 0,
     chargePower: 0.5,
+    loft: 0.5,
     ballY: 0.8,
     playerX: 0,
     playerZ: 1,
@@ -38,10 +46,11 @@ describe('calculateShot aim vs power', () => {
     expect(hard.powerMultiplier).toBeGreaterThan(soft.powerMultiplier)
   })
 
-  it('does not aim the shot toward the back wall', () => {
+  it('folds a behind-the-player yaw into the opposing front corner', () => {
     const shot = calculateShot(baseContext({ playerRotation: Math.PI }))
-    expect(shot.direction.z).toBeLessThanOrEqual(0)
-    expect(shot.direction.length()).toBeCloseTo(1, 5)
+    expect(shot.direction.z).toBeLessThan(0)
+    // π yaw of a −Z drive points +Z; fold flips lateral to the opposing side.
+    expect(shot.direction.x).not.toBeCloseTo(0, 1)
   })
 
   it('yaws a front-wall drive about Y', () => {
@@ -79,5 +88,66 @@ describe('selectShotType', () => {
       chargePower: 0.6,
       playerRotation: Math.PI / 6,
     }))).toBe('crossCourt')
+  })
+
+  it('picks boast when aimed into the near side wall', () => {
+    expect(selectShotType(baseContext({
+      nearWall: 'left',
+      playerRotation: aimToPlayerRotation(0),
+      chargePower: 0.6,
+    }))).toBe('boast')
+    expect(selectShotType(baseContext({
+      nearWall: 'right',
+      playerRotation: aimToPlayerRotation(1),
+      chargePower: 0.6,
+    }))).toBe('boast')
+  })
+
+  it('biases lob from high loft stick in mid/back court', () => {
+    expect(selectShotType(baseContext({
+      courtPosition: 'mid',
+      chargePower: 0.6,
+      loft: 0.8,
+      playerRotation: 0,
+    }))).toBe('lob')
+  })
+
+  it('biases kill from low loft stick on a high ball', () => {
+    expect(selectShotType(baseContext({
+      ballHeight: 'high',
+      courtPosition: 'mid',
+      chargePower: 0.6,
+      loft: 0.2,
+      playerRotation: 0,
+    }))).toBe('kill')
+  })
+
+  it('keeps sidewall boast when loft is high but aim faces the wall', () => {
+    expect(selectShotType(baseContext({
+      nearWall: 'left',
+      playerRotation: aimToPlayerRotation(0),
+      chargePower: 0.6,
+      loft: 0.9,
+    }))).toBe('boast')
+  })
+})
+
+describe('loft stick vertical bias', () => {
+  it('leaves drive vertical unchanged at neutral loft', () => {
+    const neutral = calculateShotAngles('drive', baseContext({ loft: 0.5 }))
+    expect(neutral.vertical).toBeCloseTo(0.09, 5)
+  })
+
+  it('raises vertical when loft stick is high', () => {
+    const high = calculateShotAngles('drive', baseContext({ loft: 1 }))
+    const neutral = calculateShotAngles('drive', baseContext({ loft: 0.5 }))
+    expect(high.vertical).toBeGreaterThan(neutral.vertical)
+    expect(high.vertical - neutral.vertical).toBeCloseTo(LOFT_VERTICAL_SCALE * 0.5, 5)
+  })
+
+  it('lowers vertical when loft stick is low', () => {
+    const low = calculateShotAngles('drive', baseContext({ loft: 0 }))
+    const neutral = calculateShotAngles('drive', baseContext({ loft: 0.5 }))
+    expect(low.vertical).toBeLessThan(neutral.vertical)
   })
 })

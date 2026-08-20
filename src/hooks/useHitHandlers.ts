@@ -10,9 +10,20 @@ import {
   getShotConfig,
   type ShotType,
 } from '../systems/shotTypes'
-import { calculateAIShot, shouldPlayDrop, type AIConfig } from '../systems/ai'
-import { serveHorizontalAngle, serveLoft, serveSpeed } from '../systems/serveRules'
+import { aiRallyAim, calculateAIShot, shouldPlayDrop, type AIConfig } from '../systems/ai'
+import {
+  serveHorizontalAngle,
+  serveHorizontalFromAim,
+  serveLoft,
+  serveLoftForOpponent,
+  serveLoftFromStick,
+  serveSpeed,
+  serveSpeedForOpponent,
+} from '../systems/serveRules'
 import { aimToPlayerRotation } from '../systems/aimRotation'
+import { recordReceiveSample } from '../systems/receiveTelemetry'
+import { calculateSwingState } from '../systems/swingAnimation'
+import { swingTimingQuality } from '../systems/hitTiming'
 import type { ServeRefs } from './useServeReset'
 
 interface UseHitHandlersParams {
@@ -21,9 +32,6 @@ interface UseHitHandlersParams {
   playerPositionVec: React.MutableRefObject<THREE.Vector3>
   aiPosRef: React.MutableRefObject<[number, number, number]>
   serveRefs: ServeRefs
-  /** False between the player's own strike and the ball reaching a wall (no volley-before-bounce). */
-  canHit: boolean
-  setCanHit: (v: boolean) => void
   setLastHitter: (h: 'player' | 'opponent' | null) => void
   setCurrentStriker: (s: 'player' | 'opponent') => void
   setPhase: (p: 'idle' | 'serving' | 'rally' | 'point' | 'gameOver' | 'matchOver') => void
@@ -61,17 +69,6 @@ interface UseHitHandlersParams {
 const HIT_COOLDOWN_MS = 150
 
 /**
- * Pick where across the front wall an AI rally shot is aimed, in [-1, 1].
- *
- * Biased away from the striker's own side, which is what sends the opponent across the
- * court and produces a rally rather than two players trading shots in one corner.
- */
-function aiRallyAim(strikerX: number): number {
-  const away = strikerX >= 0 ? -1 : 1
-  return away * (0.3 + Math.random() * 0.6)
-}
-
-/**
  * A miss sample in [-1, 1], centre-weighted so most shots land near the aim point and
  * only a few stray far enough to find the tin or the side wall.
  */
@@ -104,8 +101,6 @@ export function useHitHandlers(params: UseHitHandlersParams): {
     playerPositionVec,
     aiPosRef,
     serveRefs,
-    canHit,
-    setCanHit,
     setLastHitter,
     setCurrentStriker,
     setPhase,
@@ -150,7 +145,7 @@ export function useHitHandlers(params: UseHitHandlersParams): {
       const ball = ballRef.current
       // canHit is checked here rather than only at the call sites, because the racquet
       // sensor fires independently of the proximity check and must obey the same rule.
-      if (!ball || !canHit || !claimHit()) return
+      if (!ball || !useGameStore.getState().canHit || !claimHit()) return
 
       useGameStore.getState().resetStrikeWallTracking()
 
@@ -162,20 +157,32 @@ export function useHitHandlers(params: UseHitHandlersParams): {
 
       if (phase === 'serving') {
         const currentBox = useGameStore.getState().serviceBox
+        const { aim, loft } = useInputStore.getState()
         direction = new THREE.Vector3(
-          serveHorizontalAngle(currentBox),
-          serveLoft(power),
+          serveHorizontalFromAim(currentBox, aim),
+          serveLoftFromStick(loft),
           -1,
         ).normalize()
         speed = serveSpeed(power)
         shotDisplayName = `SERVE (${currentBox.toUpperCase()})`
       } else {
         // Live aim yaw (not lerped mesh yaw) so executed type matches the ground preview.
+        const input = useInputStore.getState()
+        const swing = calculateSwingState(
+          input.buttonA.pressed,
+          input.buttonA.holdStart,
+          input.swing.active,
+          input.swing.startTime,
+          ballPosition,
+          playerPositionVec.current,
+        )
         const shot = calculateShotVelocity(
           power,
           playerPositionVec.current,
           ballPosition,
-          aimToPlayerRotation(useInputStore.getState().aim)
+          aimToPlayerRotation(input.aim),
+          input.loft,
+          { timingQuality: swingTimingQuality(swing) },
         )
         executedShotType = shot.type
         shotDisplayName = getShotConfig(shot.type).displayName
@@ -189,6 +196,15 @@ export function useHitHandlers(params: UseHitHandlersParams): {
 
       strikeBall(ball, direction, speed)
       useGameStore.getState().signalBallHit('player', power)
+
+      // Phase 0 evidence: successful human return while chasing (or not).
+      if (phase === 'rally') {
+        recordReceiveSample({
+          outcome: 'returned',
+          chased: useInputStore.getState().buttonB.pressed,
+          now: Date.now(),
+        })
+      }
 
       if (executedShotType) {
         setLastShotType(executedShotType)
@@ -205,19 +221,17 @@ export function useHitHandlers(params: UseHitHandlersParams): {
       } else {
         serveRefs.serveInFlight.current = false
       }
-      setCanHit(false)
+      useGameStore.getState().setCanHit(false)
       endSwing()
       triggerRecovery()
     },
     [
       ballRef,
       ballPosition,
-      canHit,
       claimHit,
       phase,
       playerPositionVec,
       serveRefs,
-      setCanHit,
       setCurrentShotType,
       setCurrentStriker,
       setLastHitter,
@@ -232,9 +246,9 @@ export function useHitHandlers(params: UseHitHandlersParams): {
   const handleAIRacquetHit = useCallback(
     (_racquetPosition: THREE.Vector3) => {
       const ball = ballRef.current
-      // The AI is bound by the no-volley-before-a-wall rule too. It used to clear `canHit`
+      // The AI is bound by front-wall returnability too. It used to clear `canHit`
       // without ever checking it, so only the human was actually held to it.
-      if (!ball || !canHit || !claimHit()) return
+      if (!ball || !useGameStore.getState().canHit || !claimHit()) return
 
       useGameStore.getState().resetStrikeWallTracking()
 
@@ -245,15 +259,18 @@ export function useHitHandlers(params: UseHitHandlersParams): {
 
       if (phase === 'serving' && servingPlayer === 'opponent') {
         const currentBox = useGameStore.getState().serviceBox
+        const softVsHuman = !useGameStore.getState().demoMode
         direction = new THREE.Vector3(
           serveHorizontalAngle(currentBox),
-          serveLoft(power),
+          serveLoftForOpponent(power, { softVsHuman }),
           -1,
         ).normalize()
-        speed = serveSpeed(power)
+        speed = serveSpeedForOpponent(power, { softVsHuman })
         shotDisplayName = `AI SERVE (${currentBox.toUpperCase()})`
       } else {
-        const lateralAim = aiRallyAim(aiPosRef.current[0])
+        // Aim away from the human, not the AI's own floor X (that locked left when the
+        // player held the right service side).
+        const lateralAim = aiRallyAim(playerPositionVec.current.x, Math.random())
         const shot = calculateAIShot({
           ballPosition,
           power,
@@ -296,23 +313,21 @@ export function useHitHandlers(params: UseHitHandlersParams): {
         clearTimeout(aiSwingTimeoutRef.current)
         aiSwingTimeoutRef.current = null
       }
-      setCanHit(false)
+      useGameStore.getState().setCanHit(false)
     },
     [
       ballRef,
       ballPosition,
-      canHit,
       claimHit,
       phase,
       servingPlayer,
       aiSwingPower,
       aiConfig,
-      aiPosRef,
+      playerPositionVec,
       serveRefs,
       lastAIHitTime,
       aiChargeStartTime,
       aiSwingTimeoutRef,
-      setCanHit,
       setLastHitter,
       setCurrentStriker,
       setPhase,
@@ -327,7 +342,7 @@ export function useHitHandlers(params: UseHitHandlersParams): {
   const handlePlayerAIRacquetHit = useCallback(
     (_racquetPosition: THREE.Vector3) => {
       const ball = ballRef.current
-      if (!ball || !canHit || !claimHit()) return
+      if (!ball || !useGameStore.getState().canHit || !claimHit()) return
 
       useGameStore.getState().resetStrikeWallTracking()
 
@@ -346,7 +361,7 @@ export function useHitHandlers(params: UseHitHandlersParams): {
         speed = serveSpeed(power)
         shotDisplayName = `PLAYER AI SERVE (${currentBox.toUpperCase()})`
       } else {
-        const lateralAim = aiRallyAim(playerPositionVec.current.x)
+        const lateralAim = aiRallyAim(aiPosRef.current[0], Math.random())
         const shot = calculateAIShot({
           ballPosition,
           power,
@@ -389,23 +404,21 @@ export function useHitHandlers(params: UseHitHandlersParams): {
         clearTimeout(playerAISwingTimeoutRef.current)
         playerAISwingTimeoutRef.current = null
       }
-      setCanHit(false)
+      useGameStore.getState().setCanHit(false)
     },
     [
       ballRef,
       ballPosition,
-      canHit,
       claimHit,
       phase,
       servingPlayer,
       playerAISwingPower,
       playerAIConfig,
-      playerPositionVec,
+      aiPosRef,
       serveRefs,
       lastPlayerAIHitTime,
       playerAIChargeStartTime,
       playerAISwingTimeoutRef,
-      setCanHit,
       setLastHitter,
       setCurrentStriker,
       setPhase,

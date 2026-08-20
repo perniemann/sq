@@ -3,13 +3,15 @@ import { COURT } from '../systems/court'
 import { useGameStore } from '../stores/gameStore'
 import { determinePointWinner, type PointReason } from '../systems/scoring'
 import { judgeServeFrontWall } from '../systems/serveRules'
+import { wallRestoresCanHit } from '../systems/returnability'
+import { recordReceiveSample } from '../systems/receiveTelemetry'
+import { useInputStore } from './useInput'
 import type { ServeRefs } from './useServeReset'
 import { DEBUG } from '../config'
 
 interface UseBallCollisionHandlersParams {
   serveRefs: ServeRefs
   handlePointScored: (winner: 'player' | 'opponent', reason: PointReason) => void
-  setCanHit: (v: boolean) => void
 }
 
 export function useBallCollisionHandlers(
@@ -20,7 +22,7 @@ export function useBallCollisionHandlers(
   handleTinHit: () => void
   handleOutOfBounds: () => void
 } {
-  const { serveRefs, handlePointScored, setCanHit } = params
+  const { serveRefs, handlePointScored } = params
 
   const handleWallHit = useCallback(
     (wallName: string, ballPos: { x: number; y: number; z: number }) => {
@@ -100,11 +102,12 @@ export function useBallCollisionHandlers(
         }
       }
 
-      if (wallName !== 'floor') {
-        setCanHit(true)
+      // Next strike only after the prior return completes on the front wall (WSF 6.2).
+      if (wallRestoresCanHit(wallName)) {
+        useGameStore.getState().setCanHit(true)
       }
     },
-    [handlePointScored, serveRefs, setCanHit]
+    [handlePointScored, serveRefs]
   )
 
   const handleFloorBounce = useCallback(
@@ -153,6 +156,14 @@ export function useBallCollisionHandlers(
           serveRefs.doubleBounceTriggeredRef.current = true
           const currentStriker = liveLastHitter === 'player' ? 'opponent' : 'player'
           const winner = determinePointWinner(liveLastHitter, currentStriker, 'doubleBounce')
+          // Phase 0: player was due to return (opponent last hit) and failed.
+          if (liveLastHitter === 'opponent' && !store.demoMode) {
+            recordReceiveSample({
+              outcome: 'missed',
+              chased: useInputStore.getState().buttonB.pressed,
+              now: Date.now(),
+            })
+          }
           if (DEBUG) console.log(
             `DOUBLE BOUNCE triggered at bounce #${bounceCount} - awarding point to ${winner}`
           )
