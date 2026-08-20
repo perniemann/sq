@@ -43,6 +43,10 @@ Full controls and scoring: [docs/HOW-TO-PLAY.md](docs/HOW-TO-PLAY.md).
 
 No backend, env files, or network calls — entirely client-side.
 
+## Deploy
+
+Play at [https://sq.perniemann.com](https://sq.perniemann.com). CI builds the static site on `main`.
+
 ## Versioning
 
 Industry-standard SemVer + [Conventional Commits](https://www.conventionalcommits.org/) + [Release Please](https://github.com/googleapis/release-please):
