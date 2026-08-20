@@ -110,7 +110,7 @@ export const TIN_DANGER_COLOR = HEX.tinDanger
 /** How long the tin stays orange after a ball hit (ms, `performance.now` clock). */
 export const TIN_HIT_FLASH_MS = 900
 
-/** Cyan by default; orange only while a recent tin hit is still flashing. */
+/** Court-line colour idle; orange only while a recent tin hit is still flashing. */
 export function tinAccentColor(tinHitAt: number | null, now: number): typeof COURT_LINE_COLOR | typeof TIN_DANGER_COLOR {
   if (tinHitAt !== null && now - tinHitAt < TIN_HIT_FLASH_MS) return TIN_DANGER_COLOR
   return COURT_LINE_COLOR

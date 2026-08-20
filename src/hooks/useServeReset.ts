@@ -17,7 +17,6 @@ interface UseServeResetParams {
   playerAIState: React.MutableRefObject<import('../systems/ai').AIState>
   /** Live AI pose — written here on serve reset; Scene updates it each rally frame. */
   aiPosRef: React.MutableRefObject<[number, number, number]>
-  setCanHit: (v: boolean) => void
   lastAIHitTime: React.MutableRefObject<number>
 }
 
@@ -34,6 +33,22 @@ export interface ServeRefs {
   serveInFlight: React.MutableRefObject<boolean>
 }
 
+/**
+ * Store half of `startNextRally`: clear the point result and enter serving with
+ * `canHit` restored. Intentionally independent of the Rapier ball body — if
+ * `resetBallForServe` early-returns on a null `ballRef`, this still unblocks serve.
+ */
+export function restoreServeReadyFromStore(): void {
+  const store = useGameStore.getState()
+  store.clearPointResult()
+  store.setCanHit(true)
+  store.setPhase('serving')
+  store.setRallyState('serving')
+  // servingPlayer is set by awardPointTo; clearPointResult does not touch it.
+  store.setCurrentStriker(store.servingPlayer)
+  store.setLastHitter(null)
+}
+
 export function useServeReset(params: UseServeResetParams): {
   resetBallForServe: () => void
   startNextRally: () => void
@@ -46,7 +61,6 @@ export function useServeReset(params: UseServeResetParams): {
     aiState,
     playerAIState,
     aiPosRef,
-    setCanHit,
     lastAIHitTime,
   } = params
 
@@ -56,11 +70,6 @@ export function useServeReset(params: UseServeResetParams): {
   const doubleBounceTriggeredRef = useRef(false)
   const serveInFlight = useRef(false)
 
-  const clearPointResult = useGameStore(state => state.clearPointResult)
-  const setPhase = useGameStore(state => state.setPhase)
-  const setRallyState = useGameStore(state => state.setRallyState)
-  const setCurrentStriker = useGameStore(state => state.setCurrentStriker)
-  const setLastHitter = useGameStore(state => state.setLastHitter)
   const resetBallForServe = useCallback(() => {
     const ball = ballRef.current
     if (!ball) return
@@ -119,7 +128,7 @@ export function useServeReset(params: UseServeResetParams): {
     currentServeBox.current = currentBox
     doubleBounceTriggeredRef.current = false
     serveInFlight.current = false
-    setCanHit(true)
+    useGameStore.getState().setCanHit(true)
     lastAIHitTime.current = Date.now()
     useGameStore.getState().registerServeReset()
 
@@ -131,28 +140,14 @@ export function useServeReset(params: UseServeResetParams): {
     aiState,
     playerAIState,
     aiPosRef,
-    setCanHit,
     lastAIHitTime,
   ])
 
   const startNextRally = useCallback(() => {
-    clearPointResult()
+    // Ball teleport may no-op when the rigid body is missing; store restore must still run.
     resetBallForServe()
-    setPhase('serving')
-    setRallyState('serving')
-    // Read live, matching resetBallForServe above: it positions the bodies from the store's
-    // current server, so taking the striker from a render closure could set the two from
-    // different servers on the frame the serve changes hands.
-    setCurrentStriker(useGameStore.getState().servingPlayer)
-    setLastHitter(null)
-  }, [
-    clearPointResult,
-    resetBallForServe,
-    setPhase,
-    setRallyState,
-    setCurrentStriker,
-    setLastHitter,
-  ])
+    restoreServeReadyFromStore()
+  }, [resetBallForServe])
 
   return {
     resetBallForServe,

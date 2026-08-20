@@ -84,6 +84,13 @@ interface GameState {
   lastHitter: PlayerSide | null // Who hit the ball last
   setCurrentStriker: (striker: PlayerSide) => void
   setLastHitter: (hitter: PlayerSide | null) => void
+
+  /**
+   * True when the prior return has completed on the front wall (or serve is ready).
+   * Cleared on strike; restored only by front-wall contact (WSF 6.2).
+   */
+  canHit: boolean
+  setCanHit: (canHit: boolean) => void
   
   // Point scoring with reason
   pointReason: PointReason | null
@@ -186,6 +193,12 @@ export const useGameStore = create<GameState>((set, get) => ({
   lastHitter: null,
   setCurrentStriker: (currentStriker) => set({ currentStriker }),
   setLastHitter: (lastHitter) => set({ lastHitter }),
+
+  canHit: true,
+  setCanHit: (canHit) => {
+    if (get().canHit === canHit) return
+    set({ canHit })
+  },
   
   // Point result tracking
   pointReason: null,
@@ -202,6 +215,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       letCalled: true,
       pointWinner: null,
       pointReason: null,
+      canHit: false,
       ...STRIKE_TRACKING_RESET
     })
   },
@@ -238,6 +252,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           letCalled: false,
           phase: 'matchOver',
           rallyState: 'ended',
+          canHit: false,
           gameBallHolder: null,
           matchBallHolder: null,
           ...STRIKE_TRACKING_RESET
@@ -252,6 +267,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           letCalled: false,
           phase: 'gameOver',
           rallyState: 'ended',
+          canHit: false,
           gameBallHolder: null,
           matchBallHolder: null,
           ...STRIKE_TRACKING_RESET
@@ -276,6 +292,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           letCalled: false,
           phase: 'point',
           rallyState: 'ended',
+          canHit: false,
           servingPlayer: winner,
           serviceBox: newServiceBox,
           gameBallHolder: newGameBall,
@@ -292,6 +309,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     rallyState: 'serving',
     currentStriker: 'player',
     lastHitter: null,
+    canHit: true,
     gameBallHolder: null,
     matchBallHolder: null,
     serviceBox: 'right',  // Server chooses box at start of game
@@ -310,6 +328,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       rallyState: 'inactive',
       currentStriker: 'player',
       lastHitter: null,
+      canHit: true,
       servingPlayer: 'player',
       serviceBox: 'right',  // Start from right box
       gameBallHolder: null,
@@ -332,6 +351,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       rallyState: 'serving',
       currentStriker: nextServer,
       lastHitter: null,
+      canHit: true,
       servingPlayer: nextServer,
       serviceBox: 'right',  // New server chooses box (default right)
       gameBallHolder: null,

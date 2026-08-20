@@ -13,12 +13,13 @@ import {
   GLB_ACCENT_MATERIAL,
 } from '../systems/court'
 import { bounceCoefficients, displayAlpha } from '../config'
+import { HEX } from '../theme/colors'
 import {
   BALL_BASE_COLOR,
   ballHitFlashColor,
   ballHitFlashMix,
 } from '../systems/ballHitFlash'
-import { isServeBallHeld, serveBallWorldPosition } from '../systems/serveRules'
+import { isServeBallHeld, isBallFrozenBetweenPoints, serveBallWorldPosition } from '../systems/serveRules'
 import {
   PIXEL_SHARD_COUNT,
   PIXEL_SHARD_DRIFT_SPEED,
@@ -87,6 +88,9 @@ const PULSE_DURATION_S = 0.28
 const PULSE_EXPAND = 0.38
 const PULSE_PEAK_OPACITY = displayAlpha(0.95)
 const PULSE_WALL_SCALE = 0.2
+/** Rising-edge pulse when canHit flips on (skipped under reduced motion). */
+const LIVE_BALL_PULSE_MS = 220
+const LIVE_BALL_PULSE_MIX = 0.55
 
 /** The rigid bodies an out-line applies to. Contact at or above the line is out. */
 const WALL_NAMES = ['frontWall', 'backWall', 'leftWall', 'rightWall'] as const
@@ -198,6 +202,12 @@ export default function Ball({
   const trailDummyRef = useRef(new THREE.Object3D())
   const serveResetCount = useGameStore(state => state.serveResetCount)
   const scene = useThree(s => s.scene)
+  const prevCanHitRef = useRef(false)
+  const liveBallPulseUntilRef = useRef(0)
+  const liveMixScratch = useRef(new THREE.Color())
+  const liveMixTarget = useRef(new THREE.Color())
+  /** Pose captured on first frozen frame — re-applied like serve hold so gravity cannot sink. */
+  const freezePoseRef = useRef<{ x: number; y: number; z: number } | null>(null)
 
   const ribbonAttenuation = useCallback((t: number): number => (
     ribbonTrailAttenuation(t, ribbonVisibleRef.current)
@@ -285,11 +295,33 @@ export default function Ball({
     // sideways and every serve drifted out to the left.
     const live = useGameStore.getState()
     if (isServeBallHeld(live.phase)) {
+      freezePoseRef.current = null
       const pose = serveBallWorldPosition(live.serviceBox)
       ball.setTranslation(pose, true)
       ball.setLinvel({ x: 0, y: 0, z: 0 }, true)
       ball.setAngvel({ x: 0, y: 0, z: 0 }, true)
+    } else if (isBallFrozenBetweenPoints(live.phase)) {
+      if (!freezePoseRef.current) {
+        const t = ball.translation()
+        freezePoseRef.current = { x: t.x, y: t.y, z: t.z }
+      }
+      ball.setTranslation(freezePoseRef.current, true)
+      ball.setLinvel({ x: 0, y: 0, z: 0 }, true)
+      ball.setAngvel({ x: 0, y: 0, z: 0 }, true)
+    } else {
+      freezePoseRef.current = null
     }
+
+    // Live returnable: tint the GLB ball (not a separate circle halo).
+    const liveShow =
+      live.canHit && (live.phase === 'rally' || live.phase === 'serving')
+    if (liveShow && !prevCanHitRef.current && !PREFERS_REDUCED_MOTION) {
+      liveBallPulseUntilRef.current = performance.now() + LIVE_BALL_PULSE_MS
+    }
+    prevCanHitRef.current = liveShow
+    const liveHex = liveShow
+      ? (live.currentStriker === 'opponent' ? HEX.opponent : HEX.player)
+      : BALL_COLOR
 
     const pos = ball.translation()
     posVecRef.current.set(pos.x, pos.y, pos.z)
@@ -297,11 +329,26 @@ export default function Ball({
 
     const now = performance.now()
     const flashHex = PREFERS_REDUCED_MOTION
-      ? BALL_COLOR
+      ? liveHex
       : ballHitFlashColor(live.ballHitAt, live.ballHitIntensity, live.ballHitSide, now)
     const hitMix = PREFERS_REDUCED_MOTION
       ? 0
       : ballHitFlashMix(live.ballHitAt, live.ballHitIntensity, now)
+
+    let paintHex = liveHex
+    if (hitMix > 0.01) {
+      liveMixScratch.current.set(liveHex)
+      liveMixTarget.current.set(flashHex)
+      liveMixScratch.current.lerp(liveMixTarget.current, hitMix)
+      paintHex = '#' + liveMixScratch.current.getHexString()
+    } else if (liveShow && liveBallPulseUntilRef.current > now) {
+      const t = 1 - (liveBallPulseUntilRef.current - now) / LIVE_BALL_PULSE_MS
+      const pulse = (1 - t) * (1 - t)
+      liveMixScratch.current.set(BALL_COLOR)
+      liveMixTarget.current.set(liveHex)
+      liveMixScratch.current.lerp(liveMixTarget.current, 0.65 + LIVE_BALL_PULSE_MIX * pulse)
+      paintHex = '#' + liveMixScratch.current.getHexString()
+    }
 
     const vel = ball.linvel()
     const speed = Math.hypot(vel.x, vel.y, vel.z)
@@ -321,15 +368,15 @@ export default function Ball({
     }
     if (!showTrail) ribbonMatRef.current = null
 
-    if (flashHex !== paintedHexRef.current) {
-      paintedHexRef.current = flashHex
+    if (paintHex !== paintedHexRef.current) {
+      paintedHexRef.current = paintHex
       for (const mat of ballMatsRef.current) {
-        mat.color.set(flashHex)
+        mat.color.set(paintHex)
       }
-      setMaterialHex(ribbonMatRef.current, flashHex)
-      pixelTrailMaterial.color.set(flashHex)
-      if (markerMatRef.current) markerMatRef.current.color.set(flashHex)
-      if (pulseMatRef.current) pulseMatRef.current.color.set(flashHex)
+      setMaterialHex(ribbonMatRef.current, paintHex)
+      pixelTrailMaterial.color.set(paintHex)
+      if (markerMatRef.current) markerMatRef.current.color.set(paintHex)
+      if (pulseMatRef.current) pulseMatRef.current.color.set(paintHex)
     }
 
     // Pixel shards on top of the ribbon — short life, hard-step dissolve, slight drift.

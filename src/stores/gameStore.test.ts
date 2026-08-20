@@ -76,7 +76,9 @@ describe('callLet', () => {
 
   it('ends the rally and flags the let, with no point winner or reason', () => {
     midGame()
+    useGameStore.setState({ canHit: true })
     store().callLet()
+    expect(store().canHit).toBe(false)
 
     const state = store()
     expect(state.phase).toBe('point')
@@ -134,6 +136,12 @@ describe('awardPointTo', () => {
     expect(state.rallyState).toBe('ended')
     expect(state.pointWinner).toBe('player')
     expect(state.pointReason).toBe('tin')
+  })
+
+  it('clears canHit when the rally ends (hygiene until serve reset)', () => {
+    useGameStore.setState({ canHit: true })
+    store().awardPointTo('player', 'tin')
+    expect(store().canHit).toBe(false)
   })
 
   it('awards a stroke like any other point, to the player given', () => {

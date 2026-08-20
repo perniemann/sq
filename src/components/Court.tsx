@@ -124,7 +124,7 @@ function TinModel(): ReactElement {
   const colorRef = useRef<string>(COURT_LINE_COLOR)
 
   const tinModel = useMemo(
-    () => applyCourtMaterials(scene.clone(), COURT_LINE_COLOR, 0.35, 'Tin'),
+    () => applyCourtMaterials(scene.clone(), COURT_LINE_COLOR, 0.14, 'Tin'),
     [scene]
   )
 
