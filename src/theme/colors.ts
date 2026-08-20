@@ -1,8 +1,9 @@
 /**
- * sq_ color system — Tron neon brand, dark-only.
+ * sq_ color system — black/white court substrate, cyan/orange identity accents, dark-only.
  *
  * Hex is the gameplay source of truth (Three `meshBasicMaterial`). CSS custom properties
- * in `tokens.css` mirror these for the DOM HUD. Neutrals are cyan-tinted; accents stay rare.
+ * in `tokens.css` mirror these for residual DOM. Court lines are near-white; player neon
+ * is reserved for athletes, scores, and feedback — not the court mesh.
  */
 
 /** Primitive + semantic hex tokens for the Canvas and shared constants. */
@@ -13,7 +14,7 @@ export const HEX = {
   ink: '#eef6f7',
   /** Secondary HUD ink (prompts, separators). */
   inkMuted: '#9aadb2',
-  /** Player / court line neon. */
+  /** Player neon (athletes, score digits, turn marks). */
   player: '#00ffff',
   /** Opponent neon. */
   opponent: '#ff6600',
@@ -24,8 +25,8 @@ export const HEX = {
   ball: '#ff8a2b',
   /** Tin hit flash — same hue as opponent danger. */
   tinDanger: '#ff6600',
-  /** Court line / default tin idle. */
-  courtLine: '#00ffff',
+  /** Court line / default tin idle — near-white (decoupled from player neon). */
+  courtLine: '#f2f4f5',
   /** Game point — amber (not pure yellow). */
   gamePoint: '#e6c04a',
   /** Match point — magenta, slightly softened. */

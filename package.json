@@ -24,6 +24,7 @@
   },
   "homepage": "https://github.com/perniemann/sq#readme",
   "dependencies": {
+    "@fontsource/ibm-plex-mono": "^5.3.0",
     "@fontsource/outfit": "^5.3.0",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
