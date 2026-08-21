@@ -131,8 +131,11 @@ function main() {
     <meta property="og:title" content="${TITLE}" />
     <meta property="og:description" content="${DESCRIPTION}" />
     <meta property="og:url" content="${CANONICAL}" />
-    <meta property="og:image" content="https://sq.perniemann.com/sq-favicon-32.png" />
-    <meta name="twitter:card" content="summary" />
+    <meta property="og:image" content="https://sq.perniemann.com/phase4-athletes-and-court.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://sq.perniemann.com/phase4-athletes-and-court.png" />
     <meta name="twitter:title" content="${TITLE}" />
     <meta name="twitter:description" content="${DESCRIPTION}" />
     <script type="application/ld+json">${jsonLd}</script>
