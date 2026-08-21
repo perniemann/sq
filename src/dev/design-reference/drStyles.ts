@@ -1,9 +1,10 @@
 import type { CSSProperties } from 'react'
 import { cssVar } from '../../theme/colors'
+import { FONT_DISPLAY_STACK, FONT_UTILITY_STACK } from '../../theme/fonts'
 
 /** Shared inline styles for the design reference page (sq_ look, no CSS framework). */
-export const drFontDisplay = 'Outfit, Bahnschrift, "Segoe UI", system-ui, sans-serif'
-export const drFontUtility = '"IBM Plex Mono", ui-monospace, monospace'
+export const drFontDisplay = FONT_DISPLAY_STACK
+export const drFontUtility = FONT_UTILITY_STACK
 
 export const drPage: CSSProperties = {
   minHeight: '100vh',
@@ -47,7 +48,7 @@ export const drHeaderInner: CSSProperties = {
 export const drH1: CSSProperties = {
   margin: 0,
   fontSize: 'clamp(1.35rem, 3.5vw, 1.85rem)',
-  fontWeight: 800,
+  fontWeight: 700,
   letterSpacing: '-0.02em',
   color: cssVar.player,
   textShadow: cssVar.glowPlayer,

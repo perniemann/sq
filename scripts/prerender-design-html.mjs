@@ -144,7 +144,7 @@ function main() {
         overflow: auto;
         background: #070a0e;
         color: #eef6f7;
-        font-family: Outfit, Bahnschrift, "Segoe UI", system-ui, sans-serif;
+        font-family: "Chakra Petch", Bahnschrift, "Segoe UI", sans-serif;
       }
       #root { min-height: 100%; }
       .dr-static {
@@ -182,7 +182,7 @@ function main() {
         <p>
           Public catalog of sq_ visual tokens and DOM UI fixtures for the browser-only
           3D squash game. Cyan and orange identity accents on a near-black void substrate;
-          Outfit for display type and IBM Plex Mono for utility labels.
+          Chakra Petch for display type and IBM Plex Mono for utility labels.
         </p>
         <p>
           This page lists foundations (HEX and CSS tokens), static DOM specimens

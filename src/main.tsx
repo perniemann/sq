@@ -1,7 +1,9 @@
 import { StrictMode, lazy, Suspense } from 'react'
 import { createRoot } from 'react-dom/client'
-import '@fontsource/outfit/700.css'
-import '@fontsource/outfit/800.css'
+import '@fontsource/chakra-petch/400.css'
+import '@fontsource/chakra-petch/700.css'
+import '@fontsource/ibm-plex-mono/400.css'
+import '@fontsource/ibm-plex-mono/700.css'
 import './theme/tokens.css'
 import { formatVersionLabel } from './version'
 
@@ -15,7 +17,7 @@ function isDesignPath(pathname: string): boolean {
   return p === '/design' || p.startsWith('/design/')
 }
 
-const path = typeof window !== 'undefined' ? window.location.pathname : '/'
+const path = window.location.pathname
 const isDesign = isDesignPath(path)
 
 document.title = isDesign
@@ -30,7 +32,7 @@ createRoot(document.getElementById('root')!).render(
           style={{
             margin: 24,
             color: 'var(--color-ink-muted)',
-            fontFamily: 'monospace',
+            fontFamily: '"IBM Plex Mono", ui-monospace, monospace',
           }}
         >
           {isDesign ? 'Loading design reference…' : 'Loading…'}

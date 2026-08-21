@@ -1,7 +1,4 @@
 import { useEffect, type ReactElement } from 'react'
-import '@fontsource/outfit/400.css'
-import '@fontsource/ibm-plex-mono/400.css'
-import '@fontsource/ibm-plex-mono/700.css'
 import { FoundationsSection } from './FoundationsSection'
 import { SpecimensSection } from './SpecimensSection'
 import { SystemSection } from './SystemSection'
@@ -30,7 +27,7 @@ const TOC = [
 
 /**
  * Public design reference — tokens, static DOM specimens, system notes.
- * Visual language matches the game (void / cyan / orange, Outfit + Plex Mono).
+ * Visual language matches the game (void / cool-warm accents, Chakra Petch + Plex Mono).
  */
 export default function DesignReferencePage(): ReactElement {
   useEffect(() => {
@@ -136,7 +133,7 @@ export default function DesignReferencePage(): ReactElement {
               color: 'var(--color-ink-muted)',
             }}
           >
-            sq_ · dark-only · Outfit + IBM Plex Mono · HEX in theme/colors.ts
+            sq_ · dark-only · Chakra Petch + IBM Plex Mono · HEX in theme/colors.ts
           </p>
         </main>
       </div>

@@ -65,7 +65,7 @@ export function SpecimensSection(): ReactElement {
       <LabeledBlock
         title="StartLockup"
         path="src/ui/StartLockup.tsx"
-        hint="Idle / demo title lockup — Outfit wordmark + version + start prompt."
+        hint="Idle / demo title lockup — Chakra Petch wordmark + version + start prompt."
       >
         <div style={{ padding: '16px 0' }}>
           <StartLockup

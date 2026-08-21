@@ -3,6 +3,6 @@
   <desc>Square mark — ink frame; orange bottom underscore wedge</desc>
   <g stroke-linejoin="miter" stroke-linecap="butt" fill="none">
     <rect x="3" y="3" width="26" height="26" stroke="#eef6f7" stroke-width="4.5"/>
-    <path d="M3 29 L16 14 L29 29 Z" stroke="#ff6600" stroke-width="2.25"/>
+    <path d="M3 29 L16 14 L29 29 Z" stroke="#f06e14" stroke-width="2.25"/>
   </g>
 </svg>
