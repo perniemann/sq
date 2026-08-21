@@ -65,7 +65,7 @@ jobs:
 
           # No-cache for entry points and unhashed root assets
           <IfModule mod_headers.c>
-            <FilesMatch "^(index\.html|favicon\.png|favicon\.ico|sq-lockup\.svg|robots\.txt|sitemap\.xml|llms\.txt|llms-full\.txt)$">
+            <FilesMatch "^(index\.html|favicon\.png|favicon\.ico|og-image\.png|sq-lockup\.svg|robots\.txt|sitemap\.xml|llms\.txt|llms-full\.txt)$">
               Header always unset Expires
               Header always unset Cache-Control
               Header always set Cache-Control "no-cache, no-store, must-revalidate"
