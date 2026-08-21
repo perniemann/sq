@@ -1,0 +1,22 @@
+---
+title: sq_
+url: https://sq.perniemann.com/
+---
+
+# sq_
+
+> Browser-only 3D squash on a WSF court — Rapier physics, two-button controls, PARS-11 best-of-3.
+
+## Play
+
+- [Play sq_](https://sq.perniemann.com/): live game (WebGL + JavaScript required)
+
+## Docs
+
+- [How to play](https://github.com/perniemann/sq/blob/main/docs/HOW-TO-PLAY.md): controls and PARS scoring
+- [Repository](https://github.com/perniemann/sq): source on GitHub
+
+## Brand
+
+- [Lockup](https://sq.perniemann.com/sq-lockup.svg): sq_ wordmark + mark
+- [Favicon](https://sq.perniemann.com/sq-favicon.svg): square mark

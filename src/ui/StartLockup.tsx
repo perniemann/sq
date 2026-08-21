@@ -17,7 +17,7 @@ export function StartLockup({
   startLabel,
   startA11y,
 }: StartLockupProps): ReactElement {
-  const titleRef = useRef<HTMLHeadingElement>(null)
+  const titleRef = useRef<HTMLDivElement>(null)
   const [markHeightPx, setMarkHeightPx] = useState<number | null>(null)
   const [markNudgePx, setMarkNudgePx] = useState(0)
   const [lockupWidthPx, setLockupWidthPx] = useState<number | null>(null)
@@ -68,9 +68,10 @@ export function StartLockup({
       textAlign: 'center',
       pointerEvents: 'none',
     }}>
-      <h1
+      {/* Page H1 lives in index.html SEO shell for crawlers; visual lockup is not a second heading. */}
+      <div
         ref={titleRef}
-        aria-label="sq_"
+        aria-hidden="true"
         style={{
           margin: 0,
           display: 'flex',
@@ -110,7 +111,7 @@ export function StartLockup({
             }}
           />
         </span>
-      </h1>
+      </div>
 
       <p
         aria-label={`Version ${versionLabel}`}

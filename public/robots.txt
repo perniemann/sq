@@ -1,0 +1,29 @@
+# sq_
+# https://sq.perniemann.com/
+
+User-agent: *
+Allow: /
+
+# AI crawlers — discovery allowed; site is a public browser game
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+Sitemap: https://sq.perniemann.com/sitemap.xml

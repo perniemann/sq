@@ -1,0 +1,33 @@
+---
+title: sq_
+url: https://sq.perniemann.com/
+description: Browser-only 3D squash game with WSF court dimensions and PARS-11 scoring.
+---
+
+# sq_
+
+> sq_ is a client-side 3D squash game in the browser. No accounts, no backend, no network gameplay — open the URL and play.
+
+## Primary
+
+- [Home / play](https://sq.perniemann.com/): full game shell (React Three Fiber + Rapier)
+- [Canonical](https://sq.perniemann.com/): same as home; single-page application
+
+## Documentation
+
+- [How to play](https://github.com/perniemann/sq/blob/main/docs/HOW-TO-PLAY.md): keyboard, mouse, and touch controls; scoring
+- [README](https://github.com/perniemann/sq/blob/main/README.md): stack, scripts, deploy notes
+- [Changelog](https://github.com/perniemann/sq/blob/main/CHANGELOG.md): release history
+
+## Assets
+
+- [Wordmark lockup](https://sq.perniemann.com/sq-lockup.svg)
+- [Logo mark](https://sq.perniemann.com/sq-logo.svg)
+- [Favicon SVG](https://sq.perniemann.com/sq-favicon.svg)
+- [Favicon PNG 32](https://sq.perniemann.com/sq-favicon-32.png)
+
+## Discovery
+
+- [robots.txt](https://sq.perniemann.com/robots.txt)
+- [sitemap.xml](https://sq.perniemann.com/sitemap.xml)
+- [llms.txt](https://sq.perniemann.com/llms.txt)
