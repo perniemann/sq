@@ -15,25 +15,25 @@ export interface ComponentManifestEntry {
 export const COMPONENT_MANIFEST: readonly ComponentManifestEntry[] = [
   {
     file: 'ui/StartLockup.tsx',
-    sectionId: 'dr-specimens',
+    sectionId: 'dr-kit',
     displayTitle: 'StartLockup',
     kind: 'specimen',
   },
   {
     file: 'ui/Scoreboard.tsx',
-    sectionId: 'dr-specimens',
+    sectionId: 'dr-kit',
     displayTitle: 'Scoreboard',
     kind: 'specimen',
   },
   {
     file: 'ui/TinGameplay.tsx',
-    sectionId: 'dr-specimens',
+    sectionId: 'dr-kit',
     displayTitle: 'TinGameplay',
     kind: 'specimen',
   },
   {
     file: 'components/ErrorBoundary.tsx',
-    sectionId: 'dr-specimens',
+    sectionId: 'dr-kit',
     displayTitle: 'ErrorBoundary fallback',
     kind: 'specimen',
   },

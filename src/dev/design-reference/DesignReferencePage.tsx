@@ -1,7 +1,12 @@
-import { useEffect, type ReactElement } from 'react'
-import { FoundationsSection } from './FoundationsSection'
-import { SpecimensSection } from './SpecimensSection'
+import { useEffect, useState, type ReactElement } from 'react'
+import { StartLockup } from '../../ui/StartLockup'
+import { formatVersionLabel } from '../../version'
+import { FeedbackSection } from './FeedbackSection'
+import { KitSection } from './KitSection'
+import { MapSection } from './MapSection'
+import { PlaySection } from './PlaySection'
 import { SystemSection } from './SystemSection'
+import { TOC } from './journey-media'
 import {
   drAside,
   drFontUtility,
@@ -19,17 +24,13 @@ import {
   drTocList,
 } from './drStyles'
 
-const TOC = [
-  { href: '#dr-foundations', label: 'Foundations' },
-  { href: '#dr-specimens', label: 'DOM specimens' },
-  { href: '#dr-system', label: 'System & excluded' },
-] as const
-
 /**
- * Public design reference — tokens, static DOM specimens, system notes.
+ * Public design reference — fit-parity IA: Map · Play · Feedback · System · Kit.
  * Visual language matches the game (void / cool-warm accents, Chakra Petch + Plex Mono).
  */
 export default function DesignReferencePage(): ReactElement {
+  const [activeHref, setActiveHref] = useState<string>(TOC[0].href)
+
   useEffect(() => {
     document.title = 'Design reference · sq_'
     const html = document.documentElement
@@ -62,6 +63,27 @@ export default function DesignReferencePage(): ReactElement {
     }
   }, [])
 
+  useEffect(() => {
+    const ids = TOC.map(({ href }) => href.slice(1))
+    const nodes = ids
+      .map((id) => document.getElementById(id))
+      .filter((el): el is HTMLElement => el != null)
+    if (nodes.length === 0) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)
+        const top = visible[0]
+        if (top?.target.id) setActiveHref(`#${top.target.id}`)
+      },
+      { rootMargin: '-20% 0px -55% 0px', threshold: [0, 0.25, 0.5, 1] },
+    )
+    for (const n of nodes) observer.observe(n)
+    return () => observer.disconnect()
+  }, [])
+
   return (
     <div style={drPage}>
       <a
@@ -82,10 +104,14 @@ export default function DesignReferencePage(): ReactElement {
           <div>
             <h1 style={drH1}>Design reference</h1>
             <p style={drLede}>
-              Public catalog of sq_ tokens and DOM UI fixtures. Source paths are listed for
-              makers; there are no secrets here. Live match UI is diegetic on the front wall.
+              Product catalog for sq_ — phase map, play evidence, feedback inventory,
+              tokens, and mountable kit. Source paths for makers; no secrets. Live match
+              UI is diegetic on the front wall.
             </p>
-            <p style={{ margin: '10px 0 0' }}>
+            <p style={{ margin: '10px 0 0', display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+              <a href="#dr-map" style={drLink}>
+                Jump to map
+              </a>
               <a href="/" style={drLink}>
                 Back to game
               </a>
@@ -99,32 +125,57 @@ export default function DesignReferencePage(): ReactElement {
           <p style={drTocLabel}>On this page</p>
           <nav>
             <ul style={drTocList}>
-              {TOC.map(({ href, label }) => (
-                <li key={href}>
-                  <a
-                    href={href}
-                    style={drTocLink}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.color = 'var(--color-player)'
-                      e.currentTarget.style.textDecoration = 'underline'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.color = 'var(--color-ink-muted)'
-                      e.currentTarget.style.textDecoration = 'none'
-                    }}
-                  >
-                    {label}
-                  </a>
-                </li>
-              ))}
+              {TOC.map(({ href, label }) => {
+                const current = activeHref === href
+                return (
+                  <li key={href}>
+                    <a
+                      href={href}
+                      aria-current={current ? 'true' : undefined}
+                      style={{
+                        ...drTocLink,
+                        color: current ? 'var(--color-player)' : drTocLink.color,
+                        textDecoration: current ? 'underline' : 'none',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.color = 'var(--color-player)'
+                        e.currentTarget.style.textDecoration = 'underline'
+                      }}
+                      onMouseLeave={(e) => {
+                        if (activeHref === href) return
+                        e.currentTarget.style.color = 'var(--color-ink-muted)'
+                        e.currentTarget.style.textDecoration = 'none'
+                      }}
+                    >
+                      {label}
+                    </a>
+                  </li>
+                )
+              })}
             </ul>
           </nav>
         </aside>
 
         <main id="dr-main" style={drMain}>
-          <FoundationsSection />
-          <SpecimensSection />
+          <div
+            style={{
+              paddingBottom: 24,
+              borderBottom:
+                '1px solid color-mix(in oklch, var(--color-ink-muted) 28%, transparent)',
+            }}
+            aria-label="Brand lockup"
+          >
+            <StartLockup
+              versionLabel={formatVersionLabel()}
+              startLabel="PRESS SPACE"
+              startA11y="Press Space to start"
+            />
+          </div>
+          <MapSection />
+          <PlaySection />
+          <FeedbackSection />
           <SystemSection />
+          <KitSection />
           <p
             style={{
               margin: 0,
@@ -133,7 +184,8 @@ export default function DesignReferencePage(): ReactElement {
               color: 'var(--color-ink-muted)',
             }}
           >
-            sq_ · dark-only · Chakra Petch + IBM Plex Mono · HEX in theme/colors.ts
+            sq_ · dark-only · Chakra Petch + IBM Plex Mono · Map · Play · Feedback · System
+            · Kit
           </p>
         </main>
       </div>

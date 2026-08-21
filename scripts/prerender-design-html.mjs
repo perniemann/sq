@@ -18,7 +18,7 @@ const OUT = join(OUT_DIR, 'index.html')
 const CANONICAL = 'https://sq.perniemann.com/design'
 const TITLE = 'Design reference · sq_'
 const DESCRIPTION =
-  'sq_ design reference: color tokens, typography, DOM UI fixtures, and system notes for the browser 3D squash game.'
+  'sq_ design reference: phase map, play evidence, feedback inventory, tokens, and mountable kit for the browser 3D squash game.'
 
 /** Game-stack chunks — do not modulepreload on /design. */
 const GAME_CHUNK_RE = /\/assets\/(?:three|rapier|drei)-[^"']+\.js/
@@ -180,38 +180,51 @@ function main() {
       <main class="dr-static">
         <h1>Design reference</h1>
         <p>
-          Public catalog of sq_ visual tokens and DOM UI fixtures for the browser-only
-          3D squash game. Cyan and orange identity accents on a near-black void substrate;
-          Chakra Petch for display type and IBM Plex Mono for utility labels.
+          Product catalog for sq_ — browser-only 3D squash on a WSF court. Cool and warm
+          identity accents on a near-black void substrate; Chakra Petch for display type
+          and IBM Plex Mono for utility labels. Live match UI is diegetic on the front wall.
         </p>
         <p>
-          This page lists foundations (HEX and CSS tokens), static DOM specimens
-          (start lockup, scoreboard, tin gameplay, error fallback), and system notes
-          for bloom, bounce profiles, and diegetic WorldHud. Source paths are included
-          for makers; there are no secrets in this catalog.
+          Sections cover the phase map and two-button input, framed play evidence, a
+          feedback inventory (charge, chase, tin, canHit, bloom), system tokens plus
+          WorldHud anatomy, and a mountable kit (StartLockup, Scoreboard, TinGameplay).
+          Source paths are included for makers; there are no secrets in this catalog.
         </p>
         <p><a href="https://sq.perniemann.com/">Back to game</a></p>
         <h2>On this page</h2>
         <ul>
-          <li><a href="#dr-foundations">Foundations: tokens &amp; typography</a></li>
-          <li><a href="#dr-specimens">DOM specimens</a></li>
-          <li><a href="#dr-system">System &amp; excluded modules</a></li>
+          <li><a href="#dr-map">Map</a></li>
+          <li><a href="#dr-play">Play</a></li>
+          <li><a href="#dr-feedback">Feedback</a></li>
+          <li><a href="#dr-system">System</a></li>
+          <li><a href="#dr-kit">Kit</a></li>
         </ul>
-        <h2 id="dr-foundations">Foundations</h2>
+        <h2 id="dr-map">Map</h2>
         <p>
-          Color tokens live in src/theme/colors.ts (HEX) and src/theme/tokens.css
-          (CSS variables and glow). Typography roles are defined in src/theme/fonts.ts.
+          Routes (/ game, /design catalog), phase machine idle → serving → rally ⇄ point
+          → gameOver/matchOver, Space/Shift two-button input, PARS-11 best-of-3, and
+          design principles (court as composition, diegetic HUD, restrained motion).
         </p>
-        <h2 id="dr-specimens">DOM specimens</h2>
+        <h2 id="dr-play">Play</h2>
         <p>
-          Static fixtures for StartLockup, Scoreboard, TinGameplay, and ErrorBoundary
-          fallback chrome. Live HUD is store-bound and shown as an aria-live stub only.
+          Framed evidence for idle, serve, rally, point callout, and match over. Prefer
+          stills under public/design-media/; diagrams fill gaps. No live Rapier WorldHud
+          mounts in this catalog.
+        </p>
+        <h2 id="dr-feedback">Feedback</h2>
+        <p>
+          Charge hold axes, chase, tin/score grammar, ball tint and canHit (front-wall
+          returnability), callout tones, bloom/displayAlpha, and reduced-motion on start.
         </p>
         <h2 id="dr-system">System</h2>
         <p>
-          Bloom, displayAlpha, bounce profiles (?bounce=), and diegetic WorldHud notes.
-          Canvas modules (Scene, Player, Ball, Court, WorldHud, GameCamera) are documented
-          as excluded from live specimens.
+          HEX and CSS tokens, typography, WorldHud column anatomy, bloom, bounce profiles
+          (?bounce=), and Canvas modules excluded from live specimens.
+        </p>
+        <h2 id="dr-kit">Kit</h2>
+        <p>
+          Mountable fixtures: StartLockup, Scoreboard, TinGameplay, ErrorBoundary fallback,
+          and an aria-live stub. Live HUD binds the game store and stays excluded.
         </p>
       </main>
     </div>

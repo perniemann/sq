@@ -13,7 +13,7 @@ url: https://sq.perniemann.com/
 
 ## Design
 
-- [Design reference](https://sq.perniemann.com/design): public token and DOM UI catalog (no secrets)
+- [Design reference](https://sq.perniemann.com/design): public product catalog — Map, Play, Feedback, System, Kit (no secrets)
 
 ## Docs
 

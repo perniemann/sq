@@ -3,10 +3,12 @@ import { cssVar } from '../../theme/colors'
 import { StartLockup } from '../../ui/StartLockup'
 import { Scoreboard, ScoreboardPlayMark } from '../../ui/Scoreboard'
 import { TinGameplay } from '../../ui/TinGameplay'
-import { LabeledBlock, Section } from './LabeledBlock'
+import { formatVersionLabel } from '../../version'
+import { EvidenceBadge } from './components/EvidenceBadge'
+import { RefSection } from './components/RefSection'
+import { LabeledBlock } from './LabeledBlock'
 import { drFontUtility, drHint } from './drStyles'
 
-/** Static aria-live stub — does not mount store-bound HUD.tsx. */
 function AriaLiveStub(): ReactElement {
   return (
     <div
@@ -26,7 +28,6 @@ function AriaLiveStub(): ReactElement {
   )
 }
 
-/** ErrorBoundary fallback chrome without throwing (static fixture). */
 function ErrorFallbackSpecimen(): ReactElement {
   return (
     <div
@@ -54,12 +55,13 @@ function ErrorFallbackSpecimen(): ReactElement {
   )
 }
 
-export function SpecimensSection(): ReactElement {
+/** Mountable DOM kit — grammar matches live WorldHud / tin system. */
+export function KitSection(): ReactElement {
   return (
-    <Section id="dr-specimens" title="DOM specimens">
+    <RefSection id="dr-kit" title="Kit" kicker="Mountable fixtures">
       <p style={{ ...drHint, marginTop: 0, marginBottom: 8 }}>
         Static fixtures only. Live HUD binds the game store and is listed under System
-        as excluded.
+        as excluded. Patterns below must stay aligned with diegetic tin copy and scores.
       </p>
 
       <LabeledBlock
@@ -67,9 +69,12 @@ export function SpecimensSection(): ReactElement {
         path="src/ui/StartLockup.tsx"
         hint="Idle / demo title lockup — Chakra Petch wordmark + version + start prompt."
       >
+        <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
+          <EvidenceBadge source="fixture" />
+        </div>
         <div style={{ padding: '16px 0' }}>
           <StartLockup
-            versionLabel="0.1.2"
+            versionLabel={formatVersionLabel()}
             startLabel="PRESS SPACE"
             startA11y="Press Space to start"
           />
@@ -81,6 +86,9 @@ export function SpecimensSection(): ReactElement {
         path="src/ui/Scoreboard.tsx"
         hint="Point scores, games-won pips, turn chevrons (player cyan / opponent orange)."
       >
+        <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
+          <EvidenceBadge source="fixture" />
+        </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24, padding: '8px 0' }}>
           <Scoreboard
             score={{ player: 7, opponent: 5 }}
@@ -102,6 +110,9 @@ export function SpecimensSection(): ReactElement {
         path="src/ui/TinGameplay.tsx"
         hint="Center column callouts — game/match point, point flash, advance / teach prompts."
       >
+        <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
+          <EvidenceBadge source="fixture" />
+        </div>
         <div
           style={{
             display: 'flex',
@@ -149,6 +160,9 @@ export function SpecimensSection(): ReactElement {
         path="src/components/ErrorBoundary.tsx"
         hint="Fallback UI chrome only — does not throw inside the catalog."
       >
+        <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
+          <EvidenceBadge source="fixture" />
+        </div>
         <ErrorFallbackSpecimen />
       </LabeledBlock>
 
@@ -157,8 +171,11 @@ export function SpecimensSection(): ReactElement {
         path="src/ui/HUD.tsx (excluded — stub only)"
         hint="Screen-reader live region pattern. Visible match UI is diegetic WorldHud."
       >
+        <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
+          <EvidenceBadge source="live-stub" />
+        </div>
         <AriaLiveStub />
       </LabeledBlock>
-    </Section>
+    </RefSection>
   )
 }

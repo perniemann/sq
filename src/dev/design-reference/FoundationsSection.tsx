@@ -78,14 +78,20 @@ function SwatchRow({
   )
 }
 
-export function FoundationsSection(): ReactElement {
-  return (
-    <Section id="dr-foundations" title="Foundations: tokens & typography">
+/** Token swatches — nested under System when `nested`, else standalone section. */
+export function FoundationsSection({
+  nested = false,
+}: {
+  nested?: boolean
+}): ReactElement {
+  const body = (
+    <>
       <div style={drFeatured}>
         <LabeledBlock
+          id="dr-foundations"
           title="HEX tokens"
           path="src/theme/colors.ts"
-          hint="Gameplay source of truth for Three meshBasicMaterial. Court substrate is black/white; cyan/orange are identity accents only."
+          hint="Gameplay source of truth for Three meshBasicMaterial. Court substrate is black/white; cool/warm identity accents only."
         >
           <div>
             {HEX_ENTRIES.map(([key, value]) => (
@@ -158,6 +164,16 @@ export function FoundationsSection(): ReactElement {
           </p>
         </div>
       </LabeledBlock>
+    </>
+  )
+
+  if (nested) {
+    return <div style={{ marginBottom: 28 }}>{body}</div>
+  }
+
+  return (
+    <Section id="dr-foundations" title="Foundations: tokens & typography">
+      {body}
     </Section>
   )
 }
