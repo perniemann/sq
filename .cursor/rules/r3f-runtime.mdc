@@ -40,5 +40,5 @@ do not `set` phase fields from a component.
 Components are declarative JSX plus refs for imperative work. Delegate real logic to a
 hook or a `systems/` function rather than growing a component. Explicit return types on
 exports (`(): React.ReactElement`). No CSS framework — `ui/` uses inline style objects
-in the black / cyan `#00ffff` / orange `#ff6600` neon palette. No semicolons, single
+in the black / ice-cyan `#1ad9e8` / amber-orange `#f06e14` neon palette. No semicolons, single
 quotes, 2-space indent, relative imports only.

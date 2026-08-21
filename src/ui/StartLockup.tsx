@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState, type ReactElement } from 'react'
 import logoSvg from '../assets/sq-logo.svg?url'
 import { cssVar } from '../theme/colors'
+import { FONT_DISPLAY_STACK, FONT_UTILITY_STACK } from '../theme/fonts'
 import { measureQDescenderPx } from './measureDescender'
 
 export type StartLockupProps = {
@@ -10,7 +11,7 @@ export type StartLockupProps = {
 }
 
 /**
- * Exact demo title lockup — glass / border / blur removed; markup otherwise unchanged.
+ * Idle title lockup — diegetic wall type matching tin grammar (display + utility mono).
  */
 export function StartLockup({
   versionLabel,
@@ -57,21 +58,24 @@ export function StartLockup({
   }, [])
 
   return (
-    <div style={{
-      display: 'inline-flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      width: 'max-content',
-      maxWidth: 'min(92vw, 28rem)',
-      boxSizing: 'border-box',
-      textAlign: 'center',
-      pointerEvents: 'none',
-    }}>
+    <div
+      style={{
+        display: 'inline-flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 'max-content',
+        maxWidth: 'min(92vw, 28rem)',
+        boxSizing: 'border-box',
+        textAlign: 'center',
+        pointerEvents: 'none',
+      }}
+    >
       {/* Page H1 lives in index.html SEO shell for crawlers; visual lockup is not a second heading. */}
       <div
         ref={titleRef}
         aria-hidden="true"
+        className="start-lockup-title"
         style={{
           margin: 0,
           display: 'flex',
@@ -82,17 +86,17 @@ export function StartLockup({
           lineHeight: 1,
           color: cssVar.ink,
           textShadow: 'none',
-          opacity: 0.55,
-          fontFamily: 'Outfit, Bahnschrift, "Segoe UI", system-ui, sans-serif',
-          fontWeight: 800,
-          letterSpacing: '-0.03em',
+          opacity: 0.92,
+          fontFamily: FONT_DISPLAY_STACK,
+          fontWeight: 700,
+          letterSpacing: '-0.02em',
         }}
       >
         <span>s</span>
         <span style={{
           display: 'inline-flex',
           alignItems: 'flex-end',
-          // Match optical gap between Outfit `s`/`q` (sidebearings + -0.03em tracking)
+          // Optical gap between Chakra Petch `s`/`q` (sidebearings + tracking)
           gap: 0,
         }}>
           <span style={{ lineHeight: 1 }}>q</span>
@@ -115,13 +119,14 @@ export function StartLockup({
 
       <p
         aria-label={`Version ${versionLabel}`}
+        className="start-lockup-version"
         style={{
-          margin: '0.35rem 0 0',
+          margin: '0.2rem 0 0',
           fontSize: 'clamp(0.62rem, 1.8vw, 0.72rem)',
           letterSpacing: '0.14em',
-          fontFamily: 'monospace',
-          color: cssVar.ink,
-          opacity: 0.42,
+          fontFamily: FONT_UTILITY_STACK,
+          color: cssVar.inkMuted,
+          opacity: 1,
         }}
       >
         {versionLabel}
@@ -129,12 +134,14 @@ export function StartLockup({
 
       <p
         aria-label={startA11y}
+        className="start-lockup-cta"
         style={{
           fontSize: 'clamp(0.72rem, 2.45vw, 0.88rem)',
           color: cssVar.opponent,
-          margin: 'clamp(7px, 1.25vh, 14px) 0 0',
-          letterSpacing: '0.08em',
-          fontFamily: 'monospace',
+          margin: 'clamp(14px, 2.2vh, 22px) 0 0',
+          letterSpacing: '0.1em',
+          fontFamily: FONT_UTILITY_STACK,
+          fontWeight: 700,
           whiteSpace: 'nowrap',
           display: 'flex',
           alignItems: 'center',
@@ -147,27 +154,32 @@ export function StartLockup({
           padding: '0.05em 0',
           textShadow: 'none',
           filter: 'none',
+          opacity: 0.95,
         }}
       >
         <span className="start-prompt-label">{startLabel}</span>
       </p>
 
       <style>{`
-        @keyframes startLightPulse {
-          0%, 100% { opacity: 0.62; filter: brightness(0.88); }
-          50% { opacity: 1; filter: brightness(1.12); }
+        /* Reveal: mark → version → CTA (Orient/Confirm on idle enter) */
+        @keyframes startLockupReveal {
+          from { opacity: 0; transform: translateY(0.35em); }
+          to { opacity: 1; transform: translateY(0); }
         }
-        .start-play-cue,
-        .start-prompt-label {
-          animation: startLightPulse 1.8s ease-in-out infinite;
-          text-shadow: none;
+        .start-lockup-title,
+        .start-lockup-version,
+        .start-lockup-cta {
+          animation: startLockupReveal 420ms ease-out both;
         }
+        .start-lockup-version { animation-delay: 70ms; }
+        .start-lockup-cta { animation-delay: 140ms; }
         @media (prefers-reduced-motion: reduce) {
-          .start-play-cue,
-          .start-prompt-label {
+          .start-lockup-title,
+          .start-lockup-version,
+          .start-lockup-cta {
             animation: none !important;
-            filter: none;
-            opacity: 1;
+            opacity: 1 !important;
+            transform: none !important;
           }
         }
       `}</style>

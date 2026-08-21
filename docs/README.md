@@ -36,7 +36,7 @@ When authoring standalone HTML under `docs/` (e.g. media reviews):
 
 | Layer | Role | Guidance |
 |-------|------|----------|
-| Display | Page title / lockup | Outfit (or Bahnschrift fallback), ≥1.5rem, weight 700–800 |
+| Display | Page title / lockup | Chakra Petch (or Bahnschrift fallback), ≥1.5rem, weight 700 |
 | Reading | Body / lede | ≥16px (`1rem`), line-height 1.4–1.7, brand ink |
 | Utility | Captions, metadata | Monospace OK; muted ink `#9aadb2`; ~0.8125rem |
 

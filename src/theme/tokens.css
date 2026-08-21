@@ -1,5 +1,5 @@
 /*
- * Semantic color tokens for the DOM HUD.
+ * Semantic color tokens for residual DOM + Canvas palette mirror.
  * Hex mirrors `src/theme/colors.ts` (HEX). OKLCH used where browsers support it for
  * tinted neutrals; hex fallbacks keep the same brand on older engines.
  */
@@ -13,17 +13,17 @@
   --color-ink-muted: #9aadb2;
   --color-ink-muted: oklch(0.74 0.02 220);
 
-  --color-player: #00ffff;
-  --color-player: oklch(0.905 0.155 195);
+  --color-player: #1ad9e8;
+  --color-player: oklch(0.84 0.125 200);
 
-  --color-opponent: #ff6600;
-  --color-opponent: oklch(0.70 0.205 45);
+  --color-opponent: #f06e14;
+  --color-opponent: oklch(0.68 0.185 48);
 
-  --color-ball: #ff8a2b;
-  --color-ball: oklch(0.76 0.19 50);
+  --color-ball: #ff8f2e;
+  --color-ball: oklch(0.77 0.175 55);
 
-  --color-tin-danger: #ff6600;
-  --color-tin-danger: oklch(0.70 0.205 45);
+  --color-tin-danger: #f06e14;
+  --color-tin-danger: oklch(0.68 0.185 48);
 
   --color-court-line: #f2f4f5;
   --color-court-line: oklch(0.96 0.004 220);
@@ -34,11 +34,11 @@
   --color-match-point: #d94fff;
   --color-match-point: oklch(0.68 0.28 325);
 
-  --color-player-pip-off: #1a5c5c;
-  --color-player-pip-off: oklch(0.38 0.06 195);
+  --color-player-pip-off: #1a555c;
+  --color-player-pip-off: oklch(0.36 0.055 200);
 
-  --color-opponent-pip-off: #5c3010;
-  --color-opponent-pip-off: oklch(0.35 0.08 45);
+  --color-opponent-pip-off: #5c2e0e;
+  --color-opponent-pip-off: oklch(0.34 0.08 48);
 
   --glow-player: 0 0 18px color-mix(in oklch, var(--color-player) 70%, transparent);
   --glow-opponent: 0 0 18px color-mix(in oklch, var(--color-opponent) 70%, transparent);

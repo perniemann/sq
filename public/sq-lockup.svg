@@ -6,15 +6,15 @@
   <text
     x="10"
     y="46"
-    font-family="Outfit, Bahnschrift, 'Segoe UI', Arial Black, sans-serif"
+    font-family="Chakra Petch, Bahnschrift, 'Segoe UI', sans-serif"
     font-size="44"
-    font-weight="800"
+    font-weight="700"
     letter-spacing="-1.4"
     fill="#eef6f7"
   >sq</text>
   <!-- ~letter sidebearing after "sq"; mark ink starts near x≈54 -->
   <g transform="translate(52 16) scale(1.05)" stroke-linejoin="miter" stroke-linecap="butt" fill="none">
     <rect x="3" y="3" width="26" height="26" stroke="#eef6f7" stroke-width="4.25"/>
-    <path d="M3 29 L16 14 L29 29 Z" stroke="#ff6600" stroke-width="2.125"/>
+    <path d="M3 29 L16 14 L29 29 Z" stroke="#f06e14" stroke-width="2.125"/>
   </g>
 </svg>
