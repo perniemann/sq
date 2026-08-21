@@ -12,6 +12,7 @@ description: Browser-only 3D squash game with WSF court dimensions and PARS-11 s
 
 - [Home / play](https://sq.perniemann.com/): full game shell (React Three Fiber + Rapier)
 - [Canonical](https://sq.perniemann.com/): same as home; single-page application
+- [Design reference](https://sq.perniemann.com/design): public token and DOM UI catalog (no secrets)
 
 ## Documentation
 
