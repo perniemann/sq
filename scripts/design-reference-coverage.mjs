@@ -1,5 +1,6 @@
 // Ensures every src/ui and src/components .tsx (excluding tests) is listed in
-// component-manifest.ts. Run: node scripts/design-reference-coverage.mjs
+// component-manifest.ts, and specimen displayTitles appear in Kit/Feedback sources.
+// Run: node scripts/design-reference-coverage.mjs
 import { readFileSync } from 'node:fs'
 import { readdir } from 'node:fs/promises'
 import { dirname, join, relative } from 'node:path'
@@ -47,6 +48,16 @@ async function main() {
   )
   const manifestSrc = readFileSync(manifestPath, 'utf8')
 
+  const kitSrc = readFileSync(
+    join(ROOT, 'src/dev/design-reference/KitSection.tsx'),
+    'utf8',
+  )
+  const feedbackSrc = readFileSync(
+    join(ROOT, 'src/dev/design-reference/FeedbackSection.tsx'),
+    'utf8',
+  )
+  const specimenSurface = `${kitSrc}\n${feedbackSrc}`
+
   const errors = []
 
   for (const f of rels) {
@@ -70,6 +81,24 @@ async function main() {
     }
   }
 
+  const entryBlocks = manifestSrc.split(/\{\s*\n/).slice(1)
+  for (const block of entryBlocks) {
+    if (!/kind:\s*'specimen'/.test(block)) continue
+    const titleM = block.match(/displayTitle:\s*'([^']+)'/)
+    const sectionM = block.match(/sectionId:\s*'([^']+)'/)
+    if (!titleM) continue
+    const title = titleM[1]
+    if (!specimenSurface.includes(title)) {
+      errors.push(
+        `Specimen displayTitle not found in KitSection/FeedbackSection: "${title}"`,
+      )
+    }
+    if (sectionM && sectionM[1] !== 'dr-kit' && sectionM[1] !== 'dr-feedback') {
+      errors.push(
+        `Specimen "${title}" sectionId should be dr-kit or dr-feedback, got ${sectionM[1]}`,
+      )
+    }
+  }
   if (errors.length) {
     console.error('design-reference coverage FAILED:')
     for (const e of errors) console.error(`  - ${e}`)

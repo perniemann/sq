@@ -1,7 +1,9 @@
 import type { ReactElement } from 'react'
 import { BOUNCE_PROFILES } from '../../config'
 import { COMPONENT_MANIFEST } from './component-manifest'
-import { LabeledBlock, Section } from './LabeledBlock'
+import { FoundationsSection } from './FoundationsSection'
+import { LabeledBlock } from './LabeledBlock'
+import { RefSection } from './components/RefSection'
 import { drFontUtility, drHint } from './drStyles'
 import { cssVar } from '../../theme/colors'
 
@@ -9,7 +11,40 @@ export function SystemSection(): ReactElement {
   const excluded = COMPONENT_MANIFEST.filter((e) => e.kind === 'excluded')
 
   return (
-    <Section id="dr-system" title="System & excluded modules">
+    <RefSection id="dr-system" title="System" kicker="Tokens · anatomy · exclusions">
+      <p style={{ ...drHint, marginTop: 0, marginBottom: 24 }}>
+        Foundations (HEX, CSS, type) plus WorldHud anatomy and modules that cannot
+        mount here without Canvas / Physics.
+      </p>
+
+      <FoundationsSection nested />
+
+      <LabeledBlock
+        title="WorldHud anatomy"
+        path="src/components/WorldHud.tsx · systems/worldHudLayout.ts · systems/hudCopy.ts"
+        hint="Diegetic match UI on the front wall (troika Text). Layout helpers + copy stay pure; colors from HEX / fonts from theme/fonts.ts."
+      >
+        <ul
+          style={{
+            margin: 0,
+            paddingLeft: 18,
+            fontFamily: drFontUtility,
+            fontSize: 13,
+            color: cssVar.inkMuted,
+            lineHeight: 1.6,
+            maxWidth: '65ch',
+          }}
+        >
+          <li>Left / right score columns with games-won pips and turn chevrons</li>
+          <li>Centre tin: callouts, game/match point, advance / teach prompts</li>
+          <li>DOM Scoreboard + TinGameplay fixtures in Kit mirror this grammar</li>
+          <li>
+            <code>ui/HUD.tsx</code> is aria-live only;{' '}
+            <code>TouchControls</code> is an invisible input layer
+          </li>
+        </ul>
+      </LabeledBlock>
+
       <LabeledBlock
         title="Bloom & display alpha"
         path="src/App.tsx · src/config.ts"
@@ -54,18 +89,6 @@ export function SystemSection(): ReactElement {
       </LabeledBlock>
 
       <LabeledBlock
-        title="Diegetic WorldHud"
-        path="src/components/WorldHud.tsx"
-        hint="Match UI lives on the front wall (troika Text). DOM HUD is aria-live only; TouchControls is an invisible input layer."
-      >
-        <p style={{ ...drHint, margin: 0 }}>
-          Layout helpers: <code>systems/worldHudLayout.ts</code>. Copy:{' '}
-          <code>systems/hudCopy.ts</code>. Colors from HEX / fonts from{' '}
-          <code>theme/fonts.ts</code>.
-        </p>
-      </LabeledBlock>
-
-      <LabeledBlock
         title="Excluded from live specimens"
         path="src/dev/design-reference/component-manifest.ts"
         hint="These modules need Canvas, Physics, or are intentionally invisible."
@@ -88,6 +111,6 @@ export function SystemSection(): ReactElement {
           ))}
         </ul>
       </LabeledBlock>
-    </Section>
+    </RefSection>
   )
 }
