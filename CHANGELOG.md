@@ -5,6 +5,14 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.6](https://github.com/perniemann/sq/compare/v0.1.5...v0.1.6) (2026-08-23)
+
+
+### Bug Fixes
+
+* harden capture-design-media harness for cloud VMs ([e762e87](https://github.com/perniemann/sq/commit/e762e87480751d4f0a3b8e5c5c1f6711545431bf))
+* restore README journey SVGs and make balls img-safe ([9023800](https://github.com/perniemann/sq/commit/9023800dc809a73a27407045c9aace8e1ba70522))
+
 ## [0.1.5](https://github.com/perniemann/sq/compare/v0.1.4...v0.1.5) (2026-08-23)
 
 
