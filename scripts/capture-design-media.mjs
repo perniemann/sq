@@ -10,7 +10,7 @@
  * stores immediately after mount, well inside that window — real GPU frames, not
  * software-rendered fallbacks.
  */
-import { existsSync, mkdirSync } from 'node:fs'
+import { existsSync, mkdirSync, renameSync, unlinkSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright'
@@ -28,16 +28,30 @@ const CHROME_EXECUTABLE =
 const LAUNCH_ARGS = ['--use-gl=angle', '--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist']
 const VIEWPORT = { width: 1600, height: 1000 }
 
-/** Mid-rally pose for wide captures — centre lane, readable height, toward the front wall. */
-const PLACE_RALLY_BALL = `
-  await new Promise((r) => setTimeout(r, 80))
-  window.__sqCapturePlaceBall?.(0.2, 1.1, -0.8)
+/** Body attaches a frame or two after the hook registers — poll briefly, don't wait 800ms. */
+const placeUntilReady = (x, y, z) => `
+  {
+    const deadline = Date.now() + 360
+    let placed = false
+    while (Date.now() < deadline) {
+      const fn = window.__sqCapturePlaceBall
+      if (typeof fn === 'function' && fn(${x}, ${y}, ${z})) {
+        placed = true
+        break
+      }
+      await new Promise((r) => setTimeout(r, 30))
+    }
+    if (!placed) throw new Error('__sqCapturePlaceBall failed')
+  }
 `
-/** Right service box hold pose for serve stills. */
-const PLACE_SERVE_BALL = `
-  await new Promise((r) => setTimeout(r, 80))
-  window.__sqCapturePlaceBall?.(2.4, 1.0, 1.745)
-`
+/** Mid-rally pose for wide captures — centre lane, away from both athletes, rest orange. */
+const PLACE_RALLY_BALL = placeUntilReady(0.2, 1.1, -0.8)
+/**
+ * Serving wide stills: toward the T from the right box, not inside the athlete mesh.
+ */
+const PLACE_SERVE_BALL = placeUntilReady(1.15, 1.15, 0.55)
+/** `?ball` / `?ballzoom` look at the right-box serve pose — place the mesh there. */
+const PLACE_BOX_BALL = placeUntilReady(2.4, 1.0, 1.745)
 
 const withBigBall = (query) =>
   query.includes('bigball') ? query : `${query}${query.includes('?') ? '&' : '?'}bigball`
@@ -47,28 +61,30 @@ const PATCHES = {
   none: null,
   serving: `
     const { useGameStore } = await import('/src/stores/gameStore.ts')
+    ${PLACE_SERVE_BALL}
     const s = useGameStore.getState()
     s.setDemoMode(false)
-    s.resetMatch()
-    await new Promise((r) => setTimeout(r, 60))
     s.setPhase('serving')
     s.setRallyState('serving')
     s.setCurrentStriker('player')
+    s.setCanHit(false)
     ${PLACE_SERVE_BALL}
   `,
   rally: `
     const { useGameStore } = await import('/src/stores/gameStore.ts')
+    ${PLACE_RALLY_BALL}
     const s = useGameStore.getState()
     s.setDemoMode(false)
     s.setPhase('rally')
     s.setRallyState('active')
-    s.setCanHit(true)
+    s.setCanHit(false)
     s.setCurrentStriker('player')
     useGameStore.setState({ score: { player: 4, opponent: 3 } })
     ${PLACE_RALLY_BALL}
   `,
   point: `
     const { useGameStore } = await import('/src/stores/gameStore.ts')
+    ${PLACE_RALLY_BALL}
     const s = useGameStore.getState()
     s.setDemoMode(false)
     s.setPhase('point')
@@ -88,6 +104,7 @@ const PATCHES = {
     s.setPointResult('player', 'tin')
     s.signalTinHit()
     useGameStore.setState({ score: { player: 7, opponent: 4 } })
+    ${PLACE_RALLY_BALL}
   `,
   gameOver: `
     const { useGameStore } = await import('/src/stores/gameStore.ts')
@@ -104,6 +121,7 @@ const PATCHES = {
         config: { pointsToWin: 11, mustWinBy: 2, gamesToWin: 2 },
       },
     })
+    ${PLACE_RALLY_BALL}
   `,
   matchOver: `
     const { useGameStore } = await import('/src/stores/gameStore.ts')
@@ -120,6 +138,7 @@ const PATCHES = {
         config: { pointsToWin: 11, mustWinBy: 2, gamesToWin: 2 },
       },
     })
+    ${PLACE_RALLY_BALL}
   `,
   chargePrep: `
     const { useGameStore } = await import('/src/stores/gameStore.ts')
@@ -128,11 +147,12 @@ const PATCHES = {
     s.setDemoMode(false)
     s.setPhase('rally')
     s.setRallyState('active')
-    s.setCanHit(true)
+    s.setCanHit(false)
     s.setCurrentStriker('player')
     useInputStore.setState({
       buttonA: { pressed: true, holdStart: Date.now() - 150, holdDuration: 0.15 },
     })
+    ${PLACE_BOX_BALL}
   `,
   chargePower: `
     const { useGameStore } = await import('/src/stores/gameStore.ts')
@@ -141,11 +161,12 @@ const PATCHES = {
     s.setDemoMode(false)
     s.setPhase('rally')
     s.setRallyState('active')
-    s.setCanHit(true)
+    s.setCanHit(false)
     s.setCurrentStriker('player')
     useInputStore.setState({
       buttonA: { pressed: true, holdStart: Date.now() - 600, holdDuration: 0.6 },
     })
+    ${PLACE_BOX_BALL}
   `,
   tinFlashOnly: `
     const { useGameStore } = await import('/src/stores/gameStore.ts')
@@ -155,23 +176,21 @@ const PATCHES = {
     const { useGameStore } = await import('/src/stores/gameStore.ts')
     const s = useGameStore.getState()
     s.setDemoMode(false)
-    s.resetMatch()
-    await new Promise((r) => setTimeout(r, 60))
     s.setPhase('serving')
     s.setRallyState('serving')
     s.setCurrentStriker('opponent')
     s.setCanHit(false)
+    ${PLACE_BOX_BALL}
   `,
   ballOn: `
     const { useGameStore } = await import('/src/stores/gameStore.ts')
     const s = useGameStore.getState()
     s.setDemoMode(false)
-    s.resetMatch()
-    await new Promise((r) => setTimeout(r, 60))
     s.setPhase('serving')
     s.setRallyState('serving')
     s.setCurrentStriker('player')
     s.setCanHit(true)
+    ${PLACE_BOX_BALL}
   `,
 }
 
@@ -203,17 +222,30 @@ async function averagePixel(path, box) {
 const isCyanish = ({ r, g, b }) => b > r + 40 && g > r + 20
 const isOrangeish = ({ r, g, b }) => r > g + 15 && r > b + 30
 
+async function isLitCourt(path) {
+  const { data, info } = await sharp(path).resize(160, 100).raw().toBuffer({ resolveWithObject: true })
+  let sum = 0
+  const pixels = data.length / info.channels
+  for (let i = 0; i < data.length; i += info.channels) {
+    sum += data[i] + data[i + 1] + data[i + 2]
+  }
+  return sum / pixels / 3 > 8
+}
+
 /** name, query string, patch key, ms before patch, ms after patch (before screenshot), options */
 const SHOTS = [
   ['capture-hero', '?nodemo', 'none', 650, 0],
-  ['capture-serving', withBigBall('?nodemo'), 'serving', 420, 150],
+  ['capture-serving', withBigBall('?nodemo'), 'serving', 420, 50, {
+    ignoreContextLoss: true,
+    attempts: 6,
+  }],
   ['capture-rally', withBigBall('?nodemo'), 'rally', 420, 150],
   ['capture-point', withBigBall('?nodemo'), 'point', 420, 150],
   ['capture-tin', withBigBall('?nodemo'), 'tinFault', 420, 150],
-  ['capture-game-over', '?nodemo', 'gameOver', 420, 150],
-  ['capture-match-over', '?nodemo', 'matchOver', 420, 150],
-  ['capture-charge-prep', '?nodemo&ball', 'chargePrep', 420, 120],
-  ['capture-charge-power', '?nodemo&ball', 'chargePower', 420, 120],
+  ['capture-game-over', withBigBall('?nodemo'), 'gameOver', 420, 150],
+  ['capture-match-over', withBigBall('?nodemo'), 'matchOver', 420, 150],
+  ['capture-charge-prep', withBigBall('?nodemo&ball'), 'chargePrep', 420, 120],
+  ['capture-charge-power', withBigBall('?nodemo&ball'), 'chargePower', 420, 120],
   ['capture-tin-idle', '?nodemo&tin', 'none', 500, 0],
   ['capture-tin-flash', '?nodemo&tin', 'tinFlashOnly', 500, 100],
   // Reduced motion + a pixel check: the tint pulse is a multi-frame animation and this
@@ -242,9 +274,22 @@ const SHOTS = [
 async function waitUntilReady(page, timeoutMs) {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
-    const ready = await page.evaluate(() => !document.body.innerText.includes('Loading'))
+    const ready = await page.evaluate(() => {
+      const canvas = document.querySelector('canvas')
+      return !!(canvas && canvas.width > 0)
+    })
     if (ready) return true
     await page.waitForTimeout(80)
+  }
+  return false
+}
+
+async function waitForPlaceHook(page, timeoutMs) {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    const ready = await page.evaluate(() => typeof window.__sqCapturePlaceBall === 'function')
+    if (ready) return true
+    await page.waitForTimeout(40)
   }
   return false
 }
@@ -272,36 +317,49 @@ async function runShot(browser, [name, query, patchKey, waitBefore, waitAfter, o
       }
       const patch = PATCHES[patchKey]
       if (waitBefore) {
-        const prePatchWait = patch ? Math.min(waitBefore, 120) : waitBefore
+        const prePatchWait = patch ? Math.min(waitBefore, 80) : waitBefore
         await page.waitForTimeout(Math.round(prePatchWait * backoff))
       }
       if (patch) {
+        const hookReady = await waitForPlaceHook(page, 1200)
+        if (!hookReady) {
+          console.warn(`${name}: attempt ${attempt} place hook never registered, retrying with a fresh page`)
+          await page.close()
+          continue
+        }
         await page.evaluate(new Function(`return (async () => { ${patch} })()`))
       }
-      // A patch can trigger a brief re-suspend (e.g. entering 'serving' resets the ball
-      // to its service position); give it a moment to clear rather than screenshotting
-      // mid-fallback.
-      const readyAfterPatch = await waitUntilReady(page, 900)
+      const readyAfterPatch = await waitUntilReady(page, 200)
       if (!readyAfterPatch) {
         console.warn(`${name}: attempt ${attempt} still loading after patch, retrying with a fresh page`)
         await page.close()
         continue
       }
       if (waitAfter) await page.waitForTimeout(Math.round(waitAfter * backoff))
-      const stillReady = await page.evaluate(() => !document.body.innerText.includes('Loading'))
+      const stillReady = await page.evaluate(() => {
+        const canvas = document.querySelector('canvas')
+        return !!(canvas && canvas.width > 0)
+      })
       if (!stillReady) {
         console.warn(`${name}: attempt ${attempt} fell back to loading before the shot, retrying with a fresh page`)
         await page.close()
         continue
       }
-      if (crashed) {
+      if (crashed && !options.ignoreContextLoss) {
         console.warn(`${name}: attempt ${attempt} context lost, retrying with a fresh page`)
         await page.close()
         continue
       }
       const path = join(OUT, `${name}.png`)
-      await page.screenshot({ path, type: 'png' })
-      if (options.verify && !(await options.verify(path))) {
+      const tmp = join(OUT, `${name}.tmp.png`)
+      await page.screenshot({ path: tmp, type: 'png' })
+      if (!(await isLitCourt(tmp))) {
+        console.warn(`${name}: attempt ${attempt} screenshot was a black/loading frame, retrying with a fresh page`)
+        unlinkSync(tmp)
+        await page.close()
+        continue
+      }
+      if (options.verify && !(await options.verify(tmp))) {
         // A single fixed wait can land on a stale frame — e.g. re-entering `serving`
         // sometimes remounts the whole Canvas tree a second time, briefly resetting the
         // ball's material to its default colour before the next frame repaints it. Poll
@@ -310,18 +368,20 @@ async function runShot(browser, [name, query, patchKey, waitBefore, waitAfter, o
         let verified = false
         for (let i = 0; i < 6 && !crashed; i++) {
           await page.waitForTimeout(80)
-          await page.screenshot({ path, type: 'png' })
-          if (await options.verify(path)) {
+          await page.screenshot({ path: tmp, type: 'png' })
+          if (await options.verify(tmp)) {
             verified = true
             break
           }
         }
         if (!verified) {
           console.warn(`${name}: attempt ${attempt} failed pixel verification, retrying with a fresh page`)
+          unlinkSync(tmp)
           await page.close()
           continue
         }
       }
+      renameSync(tmp, path)
       console.log(`${name}: ok`)
       await page.close()
       return

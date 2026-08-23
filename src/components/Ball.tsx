@@ -60,10 +60,14 @@ const BALL_MASS = 0.024
 const BALL_COLOR = BALL_BASE_COLOR
 const BALL_MODEL_PATH = '/models/ball.glb'
 
-/** Wide-frame capture stills — ball reads as pixels at real scale; boost visual only. */
+/**
+ * Wide-frame capture stills — at match scale the ball is a couple of pixels, and /design
+ * then downscales the 1600px plate into a ~480px grid cell. 12× is capture-only (visual
+ * mesh, not the Rapier collider) so the orange/cyan hex still reads on the catalog page.
+ */
 const BIG_BALL_VIEW =
   typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('bigball')
-const BALL_VISUAL_SCALE = BALL_MODEL_SCALE * (BIG_BALL_VIEW ? 6 : 1)
+const BALL_VISUAL_SCALE = BALL_MODEL_SCALE * (BIG_BALL_VIEW ? 12 : 1)
 
 /**
  * Suppresses the trail entirely rather than setting its length to 0, which would leave
@@ -213,6 +217,8 @@ export default function Ball({
   const liveMixTarget = useRef(new THREE.Color())
   /** Pose captured on first frozen frame — re-applied like serve hold so gravity cannot sink. */
   const freezePoseRef = useRef<{ x: number; y: number; z: number } | null>(null)
+  /** DEV capture harness — wins over serve-hold / between-points freeze so a placed ball sticks. */
+  const captureHoldRef = useRef<{ x: number; y: number; z: number } | null>(null)
 
   const ribbonAttenuation = useCallback((t: number): number => (
     ribbonTrailAttenuation(t, ribbonVisibleRef.current)
@@ -284,12 +290,16 @@ export default function Ball({
   /** DEV capture harness — place the ball for wide-frame stills (`scripts/capture-design-media.mjs`). */
   useEffect(() => {
     if (!import.meta.env.DEV) return
-    const place = (x: number, y: number, z: number): void => {
+    const place = (x: number, y: number, z: number): boolean => {
       const body = rigidBodyRef.current
-      if (!body) return
-      body.setTranslation({ x, y, z }, true)
+      if (!body) return false
+      const pose = { x, y, z }
+      captureHoldRef.current = pose
+      freezePoseRef.current = pose
+      body.setTranslation(pose, true)
       body.setLinvel({ x: 0, y: 0, z: 0 }, true)
       body.setAngvel({ x: 0, y: 0, z: 0 }, true)
+      return true
     }
     Object.defineProperty(window, '__sqCapturePlaceBall', {
       value: place,
@@ -329,7 +339,11 @@ export default function Ball({
     // held the ball is still a dynamic body, so a charging racquet was shoving it
     // sideways and every serve drifted out to the left.
     const live = useGameStore.getState()
-    if (isServeBallHeld(live.phase)) {
+    if (captureHoldRef.current) {
+      ball.setTranslation(captureHoldRef.current, true)
+      ball.setLinvel({ x: 0, y: 0, z: 0 }, true)
+      ball.setAngvel({ x: 0, y: 0, z: 0 }, true)
+    } else if (isServeBallHeld(live.phase)) {
       freezePoseRef.current = null
       const pose = serveBallWorldPosition(live.serviceBox)
       ball.setTranslation(pose, true)

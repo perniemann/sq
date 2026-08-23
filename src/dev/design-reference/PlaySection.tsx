@@ -64,7 +64,7 @@ export function PlaySection(): ReactElement {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(480px, 1fr))',
           gap: 28,
         }}
       >
