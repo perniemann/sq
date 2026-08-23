@@ -1,25 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 850 380" width="850" height="380" role="img">
-  <title>canHit restores only after the front wall. A side-wall or back-wall touch leaves the ball dead. Front-wall contact tints the ball in the striker colour (WSF 6.2).</title>
-  <desc>Contrast pair. Left: top-down court, ball on the side wall, court-line colour, no glow. Right: ball on the front wall, player cyan, glow pulse because live is the signal.</desc>
+  <title>Returnability: the ball is dead until it touches the front wall. Side and back wall contact do not count. Once the front wall is hit, the ball tints in the striker's colour (WSF rule 6.2).</title>
+  <desc>Contrast pair. Left: top-down court, ball on the side wall, court-line colour, no glow. Right: ball on the front wall, player cyan, a soft pulse because live is the signal.</desc>
   <defs>
     <filter id="liveBall" x="-80%" y="-80%" width="260%" height="260%">
       <feGaussianBlur stdDeviation="3.5" result="b"/>
       <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
     <style><![CDATA[
+      /* Static by default. The only motion is a slow breathing glow on the live
+         ball, matching the in-game tint; it never hides content, only brightens
+         a halo that's already visible. Off entirely under reduced motion. */
       @media (prefers-reduced-motion: no-preference) {
-        .ttl, .sub, .panel, .dead, .live { opacity: 0; animation: fade .4s ease forwards; }
-        .ttl { animation-delay: .08s }
-        .sub { animation-delay: .2s }
-        .pL { animation-delay: .35s }
-        .pR { animation-delay: .75s }
-        .dead { animation-delay: .55s }
-        .live { animation-delay: .95s }
-        .pulse { animation: glow 1.6s ease-in-out 1.2s infinite; }
+        .pulse { animation: glow 1.6s ease-in-out infinite; }
       }
-
-      @keyframes fade { to { opacity: 1 } }
       @keyframes glow {
         0%, 100% { filter: drop-shadow(0 0 2px rgba(26,217,232,.25)) }
         50% { filter: drop-shadow(0 0 8px rgba(26,217,232,.7)) }
@@ -29,13 +23,13 @@
 
   <rect width="850" height="380" fill="#070a0e"/>
 
-  <text class="ttl" x="40" y="44" fill="#eef6f7" font-family="Chakra Petch, Bahnschrift, 'Segoe UI', sans-serif" font-size="22" font-weight="700" letter-spacing="1.2">FRONT WALL MAKES IT LIVE</text>
-  <text class="sub" x="40" y="68" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="12">WSF 6.2 · side and back do not restore canHit</text>
+  <text x="40" y="44" fill="#eef6f7" font-family="Chakra Petch, Bahnschrift, 'Segoe UI', sans-serif" font-size="20" font-weight="700" letter-spacing="1">RETURNABILITY</text>
+  <text x="40" y="68" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="12">WSF rule 6.2: side and back wall contact do not make the ball live again.</text>
 
   <!-- left court: side contact, dead -->
-  <g class="panel pL">
+  <g>
     <text x="40" y="100" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="11">SIDE WALL</text>
-    <!-- court 6.4:9.75 scaled ~ 2.15 ’ 138 × 210 -->
+    <!-- court 6.4:9.75 scaled about 2.15x, roughly 138 x 210 -->
     <g fill="none" stroke-linejoin="miter" stroke-linecap="butt">
       <rect x="40" y="114" width="138" height="210" stroke="#f2f4f5" stroke-opacity=".4" stroke-width="1.4"/>
       <line x1="40" y1="114" x2="178" y2="114" stroke="#f2f4f5" stroke-width="2.2"/>
@@ -45,12 +39,12 @@
       <rect x="109" y="246" width="40" height="34" stroke="#f2f4f5" stroke-opacity=".22" stroke-width="1"/>
     </g>
     <text x="109" y="128" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="8" text-anchor="middle">front</text>
-    <circle class="dead" cx="46" cy="200" r="6" fill="#f2f4f5"/>
+    <circle cx="46" cy="200" r="6" fill="#f2f4f5"/>
     <text x="40" y="348" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="11">still dead</text>
   </g>
 
   <!-- right court: front contact, live -->
-  <g class="panel pR">
+  <g>
     <text x="260" y="100" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="11">FRONT WALL</text>
     <g fill="none" stroke-linejoin="miter" stroke-linecap="butt">
       <rect x="260" y="114" width="138" height="210" stroke="#f2f4f5" stroke-opacity=".4" stroke-width="1.4"/>
@@ -62,16 +56,16 @@
     </g>
     <text x="329" y="128" fill="#1ad9e8" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="8" text-anchor="middle">front</text>
     <g class="pulse">
-      <circle class="live" cx="329" cy="122" r="6" fill="#1ad9e8" filter="url(#liveBall)"/>
+      <circle cx="329" cy="122" r="6" fill="#1ad9e8" filter="url(#liveBall)"/>
     </g>
-    <text x="260" y="348" fill="#1ad9e8" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="11">live · striker tint</text>
+    <text x="260" y="348" fill="#1ad9e8" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="11">live, striker colour</text>
   </g>
 
   <g font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="12" fill="#9aadb2">
-    <text x="480" y="140">Floor never restores it.</text>
-    <text x="480" y="164">Volleys after the front wall stay legal.</text>
-    <text x="480" y="188">A boast is mid-flight until the front wall.</text>
-    <text x="480" y="228" fill="#eef6f7">The 3D ball is the signal.</text>
-    <text x="480" y="252">No halo. Tint = canHit.</text>
+    <text x="480" y="140">The floor never restores it either.</text>
+    <text x="480" y="164">Volleys after the front wall are still legal.</text>
+    <text x="480" y="188">A boast is dead until it reaches the front wall.</text>
+    <text x="480" y="228" fill="#eef6f7">The ball itself is the only signal.</text>
+    <text x="480" y="252">No halo or icon, just the tint.</text>
   </g>
 </svg>
