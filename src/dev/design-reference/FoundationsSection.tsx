@@ -61,8 +61,8 @@ function SwatchRow({
       ) : (
         <div
           style={{
-            width: 32,
-            height: 32,
+            width: 44,
+            height: 44,
             borderRadius: 2,
             border: `1px solid color-mix(in oklch, ${cssVar.inkMuted} 40%, transparent)`,
             background: isCssVar ? `var(${name})` : value,
@@ -142,7 +142,8 @@ export function FoundationsSection({
                   margin: '8px 0 0',
                   fontFamily: row.css,
                   fontWeight: row.weight,
-                  fontSize: row.role === 'Display' ? 28 : 16,
+                  fontSize: row.role === 'Display' ? 36 : 18,
+                  letterSpacing: row.role === 'Display' ? '-0.01em' : undefined,
                   color: cssVar.ink,
                 }}
               >

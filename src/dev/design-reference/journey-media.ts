@@ -6,64 +6,72 @@ export type JourneyMedia = {
   phase: string
   notice: string
   source: EvidenceSource
-  /** Still under public/design-media/ */
-  imageSrc?: string
-  /** Diagram label when no image */
-  diagramLabel: string
-  accent: 'player' | 'opponent' | 'ink' | 'gamePoint' | 'matchPoint'
+  /** Still under public/design-media/, captured from the running build. */
+  imageSrc: string
 }
 
-/** Play-section evidence — authored SVG plates (fixtures); swap to PNG captures when GPU capture works. */
+/**
+ * Play-section evidence — real WebGL stills captured from the running dev build via
+ * `node scripts/capture-design-media.mjs`, one per reachable phase. See that script's
+ * header comment for the capture harness's WebGL context-loss constraint (this sandbox
+ * only, not the shipped game).
+ */
 export const JOURNEY_MEDIA: readonly JourneyMedia[] = [
   {
     id: 'idle',
-    title: 'Idle lockup',
+    title: 'Idle',
     phase: 'phase: idle',
-    notice: 'Brand + version + opponent-tone CTA on the front wall. Court is the composition.',
-    source: 'fixture',
-    imageSrc: '/design-media/journey-idle.svg',
-    diagramLabel: 'IDLE',
-    accent: 'opponent',
+    notice: 'Title lockup on the front wall. Space or click starts a match.',
+    source: 'capture',
+    imageSrc: '/design-media/capture-hero.png',
   },
   {
     id: 'serve',
-    title: 'Serve',
+    title: 'Serving',
     phase: 'phase: serving',
-    notice: 'Service box + ready cue. Space charges; aim axes while held.',
-    source: 'fixture',
-    imageSrc: '/design-media/journey-serve.svg',
-    diagramLabel: 'SERVE',
-    accent: 'player',
+    notice: 'Service box, cyan aim line, hold-to-charge prompt on the tin band.',
+    source: 'capture',
+    imageSrc: '/design-media/capture-serving.png',
   },
   {
     id: 'rally',
     title: 'Rally',
     phase: 'phase: rally',
-    notice: 'Diegetic tin scores, turn marks, live ball tint when returnable (canHit).',
-    source: 'fixture',
-    imageSrc: '/design-media/journey-rally.svg',
-    diagramLabel: 'RALLY',
-    accent: 'player',
+    notice: 'Live exchange. Score and turn marks stay diegetic on the front wall.',
+    source: 'capture',
+    imageSrc: '/design-media/capture-rally.png',
   },
   {
     id: 'point',
     title: 'Point callout',
     phase: 'phase: point',
-    notice: 'Centre callout in striker colour; advance cue stays available.',
-    source: 'fixture',
-    imageSrc: '/design-media/journey-point.svg',
-    diagramLabel: 'POINT',
-    accent: 'player',
+    notice: 'DOUBLE BOUNCE — centre callout in the losing side\u2019s colour.',
+    source: 'capture',
+    imageSrc: '/design-media/capture-point.png',
+  },
+  {
+    id: 'tin',
+    title: 'Tin fault',
+    phase: "phase: point · reason: 'tin'",
+    notice: 'Tin callout band flashes opponent-warm; same grammar as any other fault.',
+    source: 'capture',
+    imageSrc: '/design-media/capture-tin.png',
+  },
+  {
+    id: 'game-over',
+    title: 'Game over',
+    phase: 'phase: gameOver',
+    notice: 'Game score settles; prompt advances to the next game.',
+    source: 'capture',
+    imageSrc: '/design-media/capture-game-over.png',
   },
   {
     id: 'match-over',
     title: 'Match over',
     phase: 'phase: matchOver',
-    notice: 'Result tone uses winner identity; magenta reserved for match point.',
-    source: 'fixture',
-    imageSrc: '/design-media/journey-match-over.svg',
-    diagramLabel: 'MATCH',
-    accent: 'matchPoint',
+    notice: 'VICTORY in winner colour. Magenta is reserved for match point, not shown here.',
+    source: 'capture',
+    imageSrc: '/design-media/capture-match-over.png',
   },
 ] as const
 

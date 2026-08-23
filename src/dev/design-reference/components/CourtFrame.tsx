@@ -4,7 +4,7 @@ import { drFontUtility } from '../drStyles'
 import { EvidenceBadge, type EvidenceSource } from './EvidenceBadge'
 
 /**
- * Evidence frame — landscape “court plate” (fit PhoneFrame analog for a 3D game).
+ * Evidence frame — landscape “court plate” (prior-art frame adapted for a 3D game).
  */
 export function CourtFrame({
   children,

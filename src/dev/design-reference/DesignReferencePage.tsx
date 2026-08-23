@@ -1,7 +1,6 @@
 import { useEffect, useState, type ReactElement } from 'react'
-import { StartLockup } from '../../ui/StartLockup'
-import { formatVersionLabel } from '../../version'
 import { FeedbackSection } from './FeedbackSection'
+import { HeroSection } from './HeroSection'
 import { KitSection } from './KitSection'
 import { MapSection } from './MapSection'
 import { PlaySection } from './PlaySection'
@@ -25,7 +24,7 @@ import {
 } from './drStyles'
 
 /**
- * Public design reference — fit-parity IA: Map · Play · Feedback · System · Kit.
+ * Public design reference — prior-art-informed IA: Map · Play · Feedback · System · Kit.
  * Visual language matches the game (void / cool-warm accents, Chakra Petch + Plex Mono).
  */
 export default function DesignReferencePage(): ReactElement {
@@ -104,9 +103,8 @@ export default function DesignReferencePage(): ReactElement {
           <div>
             <h1 style={drH1}>Design reference</h1>
             <p style={drLede}>
-              Product catalog for sq_ — phase map, play evidence, feedback inventory,
-              tokens, and mountable kit. Source paths for makers; no secrets. Live match
-              UI is diegetic on the front wall.
+              Every claim below cites the source file that backs it. No secrets, no
+              invented screens.
             </p>
             <p style={{ margin: '10px 0 0', display: 'flex', flexWrap: 'wrap', gap: 16 }}>
               <a href="#dr-map" style={drLink}>
@@ -159,36 +157,54 @@ export default function DesignReferencePage(): ReactElement {
         <main id="dr-main" style={drMain}>
           <div
             style={{
-              paddingBottom: 24,
+              paddingBottom: 32,
               borderBottom:
                 '1px solid color-mix(in oklch, var(--color-ink-muted) 28%, transparent)',
             }}
-            aria-label="Brand lockup"
           >
-            <StartLockup
-              versionLabel={formatVersionLabel()}
-              startLabel="PRESS SPACE"
-              startA11y="Press Space to start"
-            />
+            <HeroSection />
           </div>
-          <MapSection />
-          <PlaySection />
-          <FeedbackSection />
-          <SystemSection />
-          <KitSection />
-          <p
-            style={{
-              margin: 0,
-              fontFamily: drFontUtility,
-              fontSize: 11,
-              color: 'var(--color-ink-muted)',
-            }}
+          <div
+            className="dr-sections-reveal"
+            style={{ display: 'flex', flexDirection: 'column', gap: 56 }}
           >
-            sq_ · dark-only · Chakra Petch + IBM Plex Mono · Map · Play · Feedback · System
-            · Kit
-          </p>
+            <MapSection />
+            <PlaySection />
+            <FeedbackSection />
+            <SystemSection />
+            <KitSection />
+            <p
+              style={{
+                margin: 0,
+                fontFamily: drFontUtility,
+                fontSize: 11,
+                color: 'var(--color-ink-muted)',
+              }}
+            >
+              sq_ · dark-only · Chakra Petch + IBM Plex Mono · Map · Play · Feedback ·
+              System · Kit
+            </p>
+          </div>
         </main>
       </div>
+
+      <style>{`
+        @keyframes drSectionsReveal {
+          from { opacity: 0; transform: translateY(0.8em); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .dr-sections-reveal {
+          animation: drSectionsReveal 560ms cubic-bezier(0.16, 1, 0.3, 1) both;
+          animation-delay: 320ms;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .dr-sections-reveal {
+            animation: none !important;
+            opacity: 1 !important;
+            transform: none !important;
+          }
+        }
+      `}</style>
     </div>
   )
 }

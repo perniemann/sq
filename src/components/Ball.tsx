@@ -229,25 +229,34 @@ export default function Ball({
   const { scene: ballScene } = useGLTF(BALL_MODEL_PATH)
   const ballModel = useMemo(() => {
     const cloned = ballScene.clone()
-    const mats: THREE.MeshBasicMaterial[] = []
     cloned.traverse((child) => {
       if (child instanceof THREE.Mesh) {
         const originalMat = Array.isArray(child.material) ? child.material[0] : child.material
         const matName = originalMat?.name?.toLowerCase() ?? ''
         const isAccent = matName === GLB_ACCENT_MATERIAL
-        const mat = new THREE.MeshBasicMaterial({
+        child.material = new THREE.MeshBasicMaterial({
           color: BALL_COLOR,
           transparent: !isAccent,
           opacity: isAccent ? 1 : 0.85,
           side: THREE.DoubleSide,
         })
-        child.material = mat
-        mats.push(mat)
       }
     })
-    ballMatsRef.current = mats
     return cloned
   }, [ballScene])
+
+  // Collecting materials as a render-time side effect (inside the useMemo above) is unsafe:
+  // StrictMode double-invokes the factory, so a ref populated there can end up pointing at an
+  // orphaned clone's materials instead of the one actually committed to the scene. Deriving the
+  // list here, keyed on the committed `ballModel`, keeps tint updates targeting the visible mesh.
+  useEffect(() => {
+    const mats: THREE.MeshBasicMaterial[] = []
+    ballModel.traverse((child) => {
+      if (child instanceof THREE.Mesh) mats.push(child.material as THREE.MeshBasicMaterial)
+    })
+    ballMatsRef.current = mats
+    paintedHexRef.current = ''
+  }, [ballModel])
 
   // Clearing the out-of-bounds latch needs both triggers. The serve counter covers the ball
   // being repositioned, which is the usual case; the phase covers `usePhaseInput`'s path

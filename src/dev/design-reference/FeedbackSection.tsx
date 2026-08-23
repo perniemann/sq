@@ -1,183 +1,120 @@
 import type { ReactElement } from 'react'
-import { cssVar, HEX } from '../../theme/colors'
+import { cssVar } from '../../theme/colors'
+import { BeforeAfter } from './components/BeforeAfter'
 import { EvidenceBadge } from './components/EvidenceBadge'
 import { RefSection } from './components/RefSection'
 import { LabeledBlock } from './LabeledBlock'
 import { drFontDisplay, drFontUtility, drHint } from './drStyles'
 
-const CHARGE_PHASES = [
-  { id: 'racquetPrep', note: 'Backswing begins' },
-  { id: 'bodyCoil', note: 'Body loads' },
-  { id: 'powerLoad', note: 'Full charge window' },
-  { id: 'followThrough', note: 'Release follow-through' },
-] as const
-
-const FEEDBACK_ROWS = [
-  {
-    title: 'Charge (button A hold)',
-    path: 'hooks/useInput.ts · useChargePhase',
-    body: 'Hold duration maps to power / length only. Aim (A·D / drag X) and attack plane (W·S / drag Y) are separate axes while held.',
-    source: 'fixture' as const,
-  },
-  {
-    title: 'Chase (button B)',
-    path: 'hooks/useChase · pressButtonAction',
-    body: 'Burst toward the ball when returnable. Same action path for keyboard and touch.',
-    source: 'fixture' as const,
-  },
-  {
-    title: 'Tin / score / turn marks',
-    path: 'components/WorldHud.tsx · ui/Scoreboard.tsx',
-    body: 'Diegetic tin grammar on the front wall. DOM Scoreboard fixtures mirror the same scores, games-won pips, and turn chevrons.',
-    source: 'live-stub' as const,
-  },
-  {
-    title: 'Ball tint · canHit',
-    path: 'systems/returnability.ts · gameStore.canHit',
-    body: 'Returnability restores on front-wall contact (WSF 6.2), not side/back alone. Ball mesh tints to striker colour when hittable.',
-    source: 'fixture' as const,
-  },
-  {
-    title: 'Callouts',
-    path: 'ui/TinGameplay.tsx · systems/hudCopy.ts',
-    body: 'WIN / FAULT / LET and game/match point labels. Tone follows striker or match result identity.',
-    source: 'fixture' as const,
-  },
-  {
-    title: 'Bloom',
-    path: 'App.tsx · config.displayAlpha',
-    body: 'On by default (?nobloom to compare). Authored opacities go through displayAlpha for the postprocessing composer.',
-    source: 'fixture' as const,
-  },
-  {
-    title: 'Reduced motion',
-    path: 'ui/StartLockup.tsx',
-    body: 'StartReveal respects prefers-reduced-motion. Prefer one-shot reveals over infinite decorative loops.',
-    source: 'fixture' as const,
-  },
-] as const
-
-function Swatch({
-  label,
-  color,
-}: {
-  label: string
-  color: string
-}): ReactElement {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-        fontFamily: drFontUtility,
-        fontSize: 12,
-        color: cssVar.inkMuted,
-      }}
-    >
-      <span
-        style={{
-          width: 28,
-          height: 28,
-          borderRadius: '50%',
-          background: color,
-          boxShadow: `0 0 12px color-mix(in oklch, ${color} 55%, transparent)`,
-          border: `1px solid color-mix(in oklch, ${cssVar.inkMuted} 40%, transparent)`,
-          flexShrink: 0,
-        }}
-      />
-      {label}
-    </div>
-  )
-}
-
 export function FeedbackSection(): ReactElement {
   return (
-    <RefSection id="dr-feedback" title="Feedback" kicker="Signals">
-      <p style={{ ...drHint, marginTop: 0, marginBottom: 20 }}>
-        Inventory of play feedback — charge, chase, tin, returnability, callouts,
-        bloom, motion. Specimens that mount live in Kit; WorldHud stays excluded
-        from Canvas mounts.
+    <RefSection id="dr-feedback" title="Feedback" kicker="Triggered / before-after">
+      <p style={{ ...drHint, marginTop: 0, marginBottom: 24 }}>
+        Every mechanic below is two real captures of the same camera position, one state
+        apart — not a description standing alone.
       </p>
 
       <LabeledBlock
-        title="Charge phases"
-        path="stores/gameStore.ts ChargePhase · hooks/useInput.ts"
-        hint="Hold progresses racquetPrep → bodyCoil → powerLoad; followThrough on release."
+        title="Charge (button A hold)"
+        path="hooks/useInput.ts · useChargePhase"
+        hint="Hold duration maps to power / length only. Aim (A·D / drag X) and attack plane (W·S / drag Y) are separate axes while held — visible here as the racquet swinging further back and the aim readout appearing."
       >
-        <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
-          <EvidenceBadge source="fixture" />
-        </div>
-        <ol
-          style={{
-            margin: 0,
-            paddingLeft: 18,
-            fontFamily: drFontUtility,
-            fontSize: 13,
-            color: cssVar.inkMuted,
-            lineHeight: 1.65,
+        <BeforeAfter
+          before={{
+            imageSrc: '/design-media/capture-charge-prep.png',
+            label: '0.15s held',
+            alt: 'Player winding up a shot, racquet just starting to draw back',
           }}
-        >
-          {CHARGE_PHASES.map((p) => (
-            <li key={p.id} style={{ marginBottom: 4 }}>
-              <code style={{ color: cssVar.ink }}>{p.id}</code>
-              {' — '}
-              {p.note}
-            </li>
-          ))}
-        </ol>
+          after={{
+            imageSrc: '/design-media/capture-charge-power.png',
+            label: '0.6s held',
+            alt: 'Player at full charge, racquet drawn back further with an aim readout visible',
+          }}
+        />
       </LabeledBlock>
 
       <LabeledBlock
-        title="Tin danger flash"
-        path="systems/court.ts tinAccentColor · --color-tin-danger"
-        hint="After a tin hit, court tin line flashes opponent-warm danger colour for TIN_HIT_FLASH_MS, then returns to court-line white."
+        title="Tin fault flash"
+        path="components/Court.tsx tinHitAt · components/WorldHud.tsx"
+        hint="The scoreboard band sits directly on the tin (systems/court.ts tinHeight) — the same wall panel that just took the fault flashes opponent-warm, then returns to court-line white. This is the diegetic-HUD claim made literal: score and fault indicator share one surface."
       >
-        <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
-          <EvidenceBadge source="fixture" />
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20 }}>
-          <Swatch label="Tin idle (court line)" color={HEX.courtLine} />
-          <Swatch label="Tin danger flash" color={HEX.tinDanger} />
-        </div>
+        <BeforeAfter
+          before={{
+            imageSrc: '/design-media/capture-tin-idle.png',
+            label: 'idle',
+            alt: 'Close view of the tin band showing the scoreboard at rest',
+          }}
+          after={{
+            imageSrc: '/design-media/capture-tin-flash.png',
+            label: 'on tin fault',
+            alt: 'Same tin band flashing orange after a tin fault',
+          }}
+        />
       </LabeledBlock>
 
       <LabeledBlock
-        title="Ball striker tint"
-        path="components/Ball.tsx · canHit"
-        hint="When returnable, ball mesh reads player cyan or opponent orange — not a separate halo."
+        title="Returnability (canHit) & turn"
+        path="systems/returnability.ts · gameStore.canHit"
+        hint="Returnability restores on front-wall contact (WSF 6.2), not side/back alone. When it's your turn: the aim line and turn chevron switch to your identity colour, and the ball itself carries a brief tint pulse toward that colour."
       >
-        <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
-          <EvidenceBadge source="fixture" />
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20 }}>
-          <Swatch label="Player returnable" color={HEX.player} />
-          <Swatch label="Opponent returnable" color={HEX.opponent} />
-          <Swatch label="Ball (hotter)" color={HEX.ball} />
-        </div>
+        <BeforeAfter
+          before={{
+            imageSrc: '/design-media/capture-ball-off.png',
+            label: "opponent's turn, not returnable",
+            alt: 'Serve position with the opponent turn marker and a dim aim line',
+          }}
+          after={{
+            imageSrc: '/design-media/capture-ball-on.png',
+            label: 'your turn, returnable',
+            alt: 'Same serve position with the player turn marker and a bright cyan aim line',
+          }}
+        />
       </LabeledBlock>
 
-      {FEEDBACK_ROWS.map((row) => (
-        <LabeledBlock
-          key={row.title}
-          title={row.title}
-          path={row.path}
-          hint={row.body}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <EvidenceBadge source={row.source} />
-            <span
-              style={{
-                fontFamily: drFontUtility,
-                fontSize: 12,
-                color: cssVar.inkMuted,
-              }}
-            >
-              Documented signal — see Kit for mountable fixtures
-            </span>
-          </div>
-        </LabeledBlock>
-      ))}
+      <LabeledBlock
+        title="Bloom"
+        path="App.tsx · config.displayAlpha"
+        hint="On by default — ACES tone mapping after an intensity-1.0 bloom pass. ?nobloom removes the postprocessing composer outright for comparison; every other value in the scene is unchanged between these two frames."
+      >
+        <BeforeAfter
+          before={{
+            imageSrc: '/design-media/capture-rally.png',
+            label: 'bloom on (default)',
+            alt: 'Rally frame with soft glow around the court lines and HUD',
+          }}
+          after={{
+            imageSrc: '/design-media/capture-bloom-off.png',
+            label: '?nobloom',
+            alt: 'Same rally frame with the glow removed, lines crisp',
+          }}
+        />
+      </LabeledBlock>
+
+      <LabeledBlock
+        title="Callouts"
+        path="ui/TinGameplay.tsx · systems/hudCopy.ts"
+        hint={
+          'WIN / FAULT / DOUBLE BOUNCE / VICTORY — tone follows striker or match-result identity. Already visible across the point, tin, gameOver, and matchOver frames in Play above; not repeated here.'
+        }
+      >
+        <EvidenceBadge source="capture" />
+      </LabeledBlock>
+
+      <LabeledBlock
+        title="Chase (button B)"
+        path="components/Scene.tsx isChasing · components/Player.tsx"
+        hint="Burst toward the ball when it's returnable. This is a movement-speed change over time, not a shape or colour change a single frame can show — two stills a moment apart look almost identical because the difference is how fast the player closes, not how they look. The two-button diagram in Map documents the mechanic; no before/after pair is shown here for that reason."
+      >
+        <EvidenceBadge source="fixture" />
+      </LabeledBlock>
+
+      <LabeledBlock
+        title="Reduced motion"
+        path="ui/StartLockup.tsx · ui/TinGameplay.tsx · components/Ball.tsx"
+        hint="prefers-reduced-motion suppresses reveal animations, the ball trail, hit pulses, and impact markers — the visible result is an absence of motion, which a still image can't demonstrate either way. Verified by reading the media query in each file listed."
+      >
+        <EvidenceBadge source="live-stub" />
+      </LabeledBlock>
 
       <p
         style={{
@@ -189,6 +126,18 @@ export function FeedbackSection(): ReactElement {
       >
         Pattern: utility mono CTAs on void · cool/warm score pair · tin danger only as a
         timed flash (not a permanent chrome accent).
+      </p>
+      <p
+        style={{
+          margin: '6px 0 0',
+          fontFamily: drFontUtility,
+          fontSize: 11,
+          color: cssVar.inkMuted,
+        }}
+      >
+        Captured with <code>scripts/capture-design-media.mjs</code> by driving the
+        Zustand stores directly, not by playing — see that script for the one
+        environment constraint on capture timing.
       </p>
     </RefSection>
   )

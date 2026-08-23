@@ -2,7 +2,7 @@ import type { ReactElement, ReactNode } from 'react'
 import { cssVar } from '../../../theme/colors'
 import { drFontUtility, drH2, drSection } from '../drStyles'
 
-/** Fit-style section: kicker + title + body. */
+/** Prior-art-informed section: kicker + title + body. */
 export function RefSection({
   id,
   title,

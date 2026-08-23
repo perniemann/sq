@@ -3,6 +3,8 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useGameStore } from '../stores/gameStore'
 import { COURT, FRONT_WALL_Z } from '../systems/court'
+import { SERVICE_BOX_POSITIONS } from '../systems/courtPositions'
+import { SERVE_BALL_HEIGHT, SERVE_BALL_Z_OFFSET } from '../systems/serveRules'
 import {
   BALL_FOLLOW_WEIGHT,
   CAMERA_LOOK_FRONT_BIAS,
@@ -19,6 +21,28 @@ import {
  */
 const TIN_VIEW =
   typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('tin')
+
+/**
+ * Fixed close-up on the right service box for ball / racquet / charge evidence — at match
+ * scale (BALL_RADIUS 0.02m) the ball reads as a couple of pixels from the default follow
+ * camera's whole-court framing. Append `?ball` — same convention as `?tin`. Not a gameplay
+ * camera.
+ */
+const BALL_VIEW =
+  typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('ball')
+const BALL_VIEW_TARGET = {
+  x: SERVICE_BOX_POSITIONS.right.x,
+  y: SERVE_BALL_HEIGHT,
+  z: SERVICE_BOX_POSITIONS.right.z + SERVE_BALL_Z_OFFSET,
+}
+
+/**
+ * Twice as close as `?ball` — only for the serve-hold canHit tint evidence, where the pose
+ * is static (no racquet swing to clip out of frame), so the ball itself can actually read
+ * as a coloured shape rather than a couple of pixels lost in a wider frame. Append `?ballzoom`.
+ */
+const BALL_ZOOM_VIEW =
+  typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('ballzoom')
 
 interface GameCameraProps {
   followEnabled: boolean
@@ -61,6 +85,28 @@ export default function GameCamera({
       // Close to the front wall, looking slightly down at the tin band so it fills the frame.
       camera.position.set(0, 1.0, -2.2)
       camera.lookAt(0, COURT.tinHeight * 0.5, FRONT_WALL_Z)
+      return
+    }
+
+    if (BALL_ZOOM_VIEW) {
+      // Same angle as ?ball, half the distance.
+      camera.position.set(
+        BALL_VIEW_TARGET.x - 0.55,
+        BALL_VIEW_TARGET.y + 0.175,
+        BALL_VIEW_TARGET.z + 0.95
+      )
+      camera.lookAt(BALL_VIEW_TARGET.x, BALL_VIEW_TARGET.y - 0.08, BALL_VIEW_TARGET.z)
+      return
+    }
+
+    if (BALL_VIEW) {
+      // Close on the right service box, angled slightly so the racquet reads in profile.
+      camera.position.set(
+        BALL_VIEW_TARGET.x - 1.1,
+        BALL_VIEW_TARGET.y + 0.35,
+        BALL_VIEW_TARGET.z + 1.9
+      )
+      camera.lookAt(BALL_VIEW_TARGET.x, BALL_VIEW_TARGET.y - 0.15, BALL_VIEW_TARGET.z)
       return
     }
 

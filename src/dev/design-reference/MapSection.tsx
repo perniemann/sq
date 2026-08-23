@@ -1,6 +1,8 @@
 /** Map: routes, phase machine, input, PARS-11, principles. */
 import type { ReactElement } from 'react'
 import { cssVar } from '../../theme/colors'
+import { InputDiagram } from './components/InputDiagram'
+import { PhaseDiagram } from './components/PhaseDiagram'
 import { RefSection } from './components/RefSection'
 import { drFontDisplay, drFontUtility, drHint } from './drStyles'
 
@@ -23,195 +25,60 @@ const PRINCIPLES = [
   },
 ] as const
 
-const PHASES = [
-  { id: 'idle', note: 'Title lockup · Space starts' },
-  { id: 'serving', note: 'Service · charge / aim / release' },
-  { id: 'rally', note: 'Exchange · Space shot · Shift chase' },
-  { id: 'point', note: 'Callout · advance to next' },
-  { id: 'gameOver', note: 'Game won · next game' },
-  { id: 'matchOver', note: 'Match result · restart' },
-] as const
+function H3({ children }: { children: ReactElement | string }): ReactElement {
+  return (
+    <h3
+      style={{
+        margin: '0 0 10px',
+        fontFamily: drFontDisplay,
+        fontSize: 15,
+        fontWeight: 700,
+        color: cssVar.player,
+      }}
+    >
+      {children}
+    </h3>
+  )
+}
 
 export function MapSection(): ReactElement {
   return (
     <RefSection id="dr-map" title="Map" kicker="Orientation">
-      <p style={{ ...drHint, marginTop: 0, marginBottom: 24 }}>
-        Public surface for sq_ — browser-only WSF court, Rapier physics, PARS-11
-        best-of-3. This catalog is the design system; the game at{' '}
-        <a href="/" style={{ color: cssVar.player }}>
-          /
-        </a>{' '}
-        is play.
+      <p style={{ ...drHint, marginTop: 0, marginBottom: 28, maxWidth: '65ch' }}>
+        Browser-only WSF court, Rapier physics, PARS-11 best-of-3. Two routes:{' '}
+        <code style={{ color: cssVar.ink }}>/</code> is the game (Canvas + Rapier),{' '}
+        <code style={{ color: cssVar.ink }}>/design</code> is this catalog — no physics,
+        real screenshots instead.
       </p>
 
-      <h3
-        style={{
-          margin: '0 0 10px',
-          fontFamily: drFontDisplay,
-          fontSize: 15,
-          fontWeight: 700,
-          color: cssVar.player,
-        }}
-      >
-        Routes
-      </h3>
-      <ul
-        style={{
-          margin: '0 0 28px',
-          paddingLeft: 18,
-          fontFamily: drFontUtility,
-          fontSize: 13,
-          color: cssVar.inkMuted,
-          lineHeight: 1.65,
-        }}
-      >
-        <li>
-          <code style={{ color: cssVar.ink }}>/</code> — full game (Canvas + Rapier)
-        </li>
-        <li>
-          <code style={{ color: cssVar.ink }}>/design</code> — this catalog (no physics)
-        </li>
-      </ul>
-
-      <h3
-        style={{
-          margin: '0 0 10px',
-          fontFamily: drFontDisplay,
-          fontSize: 15,
-          fontWeight: 700,
-          color: cssVar.player,
-        }}
-      >
-        Phase machine
-      </h3>
-      <p style={{ ...drHint, marginTop: 0, marginBottom: 12 }}>
-        Zustand string-union in <code>src/stores/gameStore.ts</code>. Button A
-        semantics live in <code>usePhaseInput</code>.
+      <H3>Phase machine</H3>
+      <p style={{ ...drHint, marginTop: 0, marginBottom: 16 }}>
+        The state machine driving every screen in Play. String union in{' '}
+        <code>src/stores/gameStore.ts</code>; transitions wired in{' '}
+        <code>usePhaseInput</code> and <code>awardPointTo</code>.
       </p>
-      <ol
-        style={{
-          margin: '0 0 28px',
-          paddingLeft: 18,
-          fontFamily: drFontUtility,
-          fontSize: 13,
-          color: cssVar.inkMuted,
-          lineHeight: 1.7,
-          listStyle: 'none',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 6,
-        }}
-      >
-        {PHASES.map((p, i) => (
-          <li
-            key={p.id}
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: 10,
-              alignItems: 'baseline',
-            }}
-          >
-            <span style={{ color: cssVar.inkMuted, width: 18 }}>{i + 1}.</span>
-            <code style={{ color: cssVar.ink }}>{p.id}</code>
-            <span>{p.note}</span>
-          </li>
-        ))}
-      </ol>
-
-      <h3
-        style={{
-          margin: '0 0 10px',
-          fontFamily: drFontDisplay,
-          fontSize: 15,
-          fontWeight: 700,
-          color: cssVar.player,
-        }}
-      >
-        Two-button input
-      </h3>
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-          gap: 16,
-          marginBottom: 28,
-        }}
-      >
-        <div
-          style={{
-            padding: '12px 0',
-            borderTop: `1px solid color-mix(in oklch, ${cssVar.inkMuted} 28%, transparent)`,
-          }}
-        >
-          <p
-            style={{
-              margin: 0,
-              fontFamily: drFontDisplay,
-              fontWeight: 700,
-              color: cssVar.ink,
-              fontSize: 14,
-            }}
-          >
-            A · Space / right touch
-          </p>
-          <p style={{ ...drHint, margin: '6px 0 0' }}>
-            Charge-and-release shot (serve & rally). While held: aim X, attack
-            plane Y. Idle / advance / restart by phase.
-          </p>
-        </div>
-        <div
-          style={{
-            padding: '12px 0',
-            borderTop: `1px solid color-mix(in oklch, ${cssVar.inkMuted} 28%, transparent)`,
-          }}
-        >
-          <p
-            style={{
-              margin: 0,
-              fontFamily: drFontDisplay,
-              fontWeight: 700,
-              color: cssVar.ink,
-              fontSize: 14,
-            }}
-          >
-            B · Shift / left touch
-          </p>
-          <p style={{ ...drHint, margin: '6px 0 0' }}>
-            Chase — burst toward the ball when returnable. Same registration path as
-            keyboard via <code>pressButtonAction</code>.
-          </p>
-        </div>
+      <div style={{ marginBottom: 32 }}>
+        <PhaseDiagram />
       </div>
 
-      <h3
-        style={{
-          margin: '0 0 10px',
-          fontFamily: drFontDisplay,
-          fontSize: 15,
-          fontWeight: 700,
-          color: cssVar.player,
-        }}
-      >
-        PARS-11
-      </h3>
-      <p style={{ ...drHint, marginTop: 0, marginBottom: 28, maxWidth: '65ch' }}>
-        Point-a-Rally Scoring to 11, best of 3 games (first to 2). Must win by 2
-        from 10–10. Rules logic follows WSF/PARS — verify before changing scoring
+      <H3>Two-button input</H3>
+      <p style={{ ...drHint, marginTop: 0, marginBottom: 16 }}>
+        The entire control surface. No third button, no combo inputs, no mouse aim —
+        keyboard and touch both call the same <code>pressButtonAction</code> /{' '}
+        <code>releaseButtonAction</code> handlers.
+      </p>
+      <div style={{ marginBottom: 32 }}>
+        <InputDiagram />
+      </div>
+
+      <H3>PARS-11</H3>
+      <p style={{ ...drHint, marginTop: 0, marginBottom: 32, maxWidth: '65ch' }}>
+        Point-a-Rally Scoring to 11, best of 3 games (first to 2). Must win by 2 from
+        10–10. Rules logic follows WSF/PARS references — verified before changing scoring
         or serve behaviour.
       </p>
 
-      <h3
-        style={{
-          margin: '0 0 14px',
-          fontFamily: drFontDisplay,
-          fontSize: 15,
-          fontWeight: 700,
-          color: cssVar.player,
-        }}
-      >
-        Principles
-      </h3>
+      <H3>Principles</H3>
       <div
         style={{
           display: 'grid',
@@ -236,6 +103,17 @@ export function MapSection(): ReactElement {
           </article>
         ))}
       </div>
+
+      <p
+        style={{
+          margin: '28px 0 0',
+          fontFamily: drFontUtility,
+          fontSize: 12,
+          color: cssVar.inkMuted,
+        }}
+      >
+        No secrets in this catalog — every claim above cites the file that backs it.
+      </p>
     </RefSection>
   )
 }
