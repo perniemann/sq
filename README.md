@@ -8,7 +8,15 @@
 <!-- x-release-please-end -->
 </p>
 
-Browser-only 3D squash — WSF-dimension court, Rapier physics, black/white court with cyan/orange accents, two-button input, PARS-11 best-of-3.
+<p align="center">Browser squash on a WSF court. Two buttons. The ball tells you when it is live.</p>
+
+<p align="center">
+  <a href="https://sq.perniemann.com">https://sq.perniemann.com</a>
+</p>
+
+<p align="center">
+  <img src="public/readme/plate-match-rail.svg" alt="The match is a rail: idle to serving to rally exchanging with point, then game and match. Button A advances phases. Rally is the only place charge lives." width="850">
+</p>
 
 ## Play
 
@@ -19,15 +27,53 @@ npm run dev
 
 Open the local URL Vite prints (usually `http://localhost:5173`).
 
-Full controls and scoring: [docs/HOW-TO-PLAY.md](docs/HOW-TO-PLAY.md).
+<p align="center">
+  <img src="public/design-media/journey-idle.svg" alt="Idle lockup on the front wall" width="156">
+  <img src="public/design-media/journey-serve.svg" alt="Serve ready on the tin" width="156">
+  <img src="public/design-media/journey-rally.svg" alt="Rally score on the tin" width="156">
+  <img src="public/design-media/journey-point.svg" alt="Point callout in striker colour" width="156">
+  <img src="public/design-media/journey-match-over.svg" alt="Match over on the front wall" width="156">
+</p>
 
-### Quick controls
+## Two buttons, three axes
+
+Space is not a power meter. Hold sets length. Aim X sets width. Stick Y sets attack plane.
+
+<p align="center">
+  <img src="public/readme/plate-shot-axes.svg" alt="Space is not a power meter. Hold sets length. Aim X sets width. Stick Y sets attack plane: toward the front wall from above, toward you from below." width="850">
+</p>
 
 | Action | Mouse / keyboard | Touch |
 |--------|------------------|-------|
 | Start / continue / charge shot (length) | Click or **Space** / **LMB** (hold to charge, release to hit) | Tap / hold **right** half |
 | Aim (width; extreme → side-first boast) / attack plane (front=above · back=below) while charging | Drag X/Y, or **A**/**D** + **W**/**S** (arrows) | Drag X/Y on **right** half |
 | Chase the ball | **Shift** / **RMB** | Hold **left** half |
+
+## Front wall makes it live
+
+`canHit` restores only after the front wall (WSF 6.2). Side, back, and floor do not.
+
+<p align="center">
+  <img src="public/readme/plate-returnability.svg" alt="canHit restores only after the front wall. A side-wall or back-wall touch leaves the ball dead. Front-wall contact tints the ball in the striker colour (WSF 6.2)." width="850">
+</p>
+
+Scoring is PARS-11, win by 2 at 10–10, best of 3. Full controls and scoring: [docs/HOW-TO-PLAY.md](docs/HOW-TO-PLAY.md).
+
+## Honest edges
+
+| Edge | What it is |
+|------|------------|
+| Returnability | `canHit` restores only on front-wall contact |
+| Hit zone | Racquet collider and 1.2 m proximity check are oversized on purpose |
+| Ball | WSF radius; mass is light for pace |
+| Bundle | Rapier is most of the download |
+| Scene | Re-renders more often than it should |
+
+## Stack
+
+Vite 6 · React 19 · React Three Fiber 9 · Three.js r182 · Rapier · Zustand 5 · TypeScript 5.7 strict · Vitest
+
+No backend, env files, or network calls — entirely client-side.
 
 ## Scripts
 
@@ -40,8 +86,6 @@ Full controls and scoring: [docs/HOW-TO-PLAY.md](docs/HOW-TO-PLAY.md).
 | `npm run lint` | ESLint |
 | `npm test` | Vitest (unit) |
 | `npm run test:watch` | Vitest watch mode |
-
-No backend, env files, or network calls — entirely client-side.
 
 ## Deploy
 
@@ -64,10 +108,6 @@ Commit message prefixes that drive bumps:
 - `feat!:` / `fix!:` / `BREAKING CHANGE:` → major (or next minor under pre-major policy)
 
 See [CHANGELOG.md](CHANGELOG.md).
-
-## Stack
-
-Vite 6 · React 19 · React Three Fiber 9 · Three.js r182 · Rapier · Zustand 5 · TypeScript 5.7 strict · Vitest
 
 ## License
 

@@ -10,9 +10,7 @@
 
 <p align="center"><strong>How to play</strong></p>
 
-See also [README](../README.md).
-
-sq_ is a browser squash match against AI. The court uses real WSF dimensions; scoring follows PARS-11 (best of 3 games).
+The [README](../README.md) is the match briefing (loop, shot axes, returnability). This page is the full control and scoring reference.
 
 ## Start a match
 

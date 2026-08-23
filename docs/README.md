@@ -6,8 +6,10 @@ Index and writing conventions for `docs/`.
 
 | Doc | Role |
 |-----|------|
-| [HOW-TO-PLAY.md](HOW-TO-PLAY.md) | Controls and scoring |
-| [../README.md](../README.md) | Setup, scripts, versioning |
+| [HOW-TO-PLAY.md](HOW-TO-PLAY.md) | Full controls and scoring |
+| [../README.md](../README.md) | Match briefing (loop, shot axes, returnability), then scripts and versioning |
+| [../public/readme/](../public/readme/) | Claim plates for the README |
+| [../public/design-media/](../public/design-media/) | Journey stills (scene evidence) |
 
 Brand lockup (`public/sq-lockup.svg` — letters **sq** + mark) belongs on user-facing titles only. In prose, spell the product **`sq_`**.
 
@@ -29,6 +31,7 @@ Brand lockup (`public/sq-lockup.svg` — letters **sq** + mark) belongs on user-
 4. Sentence case for instructional titles (“How to play”). Title Case is fine for formal audit/plan names.
 5. Reserve all-caps for short labels (≤20 chars), not body copy.
 6. User-facing lockups use `public/sq-lockup.svg` (void plate + ink) so the mark stays legible on light hosts like GitHub.
+7. README claim plates live in `public/readme/` (void-plated SVG, last-frame-first, long `alt`). Do not put argument diagrams in `public/design-media/` — that folder is `/design` evidence.
 
 ## Type layers (HTML docs)
 
