@@ -4,53 +4,84 @@
   <desc>WSF court-ratio frame at left. Phase blocks on a single rail. You in player cyan, AI in opponent orange. Idle is dashed, waiting. Rally pulses once. Point cuts in hard.</desc>
   <defs>
     <style><![CDATA[
-      /* Static by default so it reads the same everywhere it's embedded. The only
-         motion is a slow breathing glow on the live "rally" block, which never
-         hides content, it just pulses brighter. Off entirely under reduced motion. */
+      /* Base: fully visible for img embed, reduced motion, and no-JS. */
+      .ttl, .node, .legend { opacity: 1; transform: translateY(0); }
+      .draw { stroke-dashoffset: 0; }
+
       @media (prefers-reduced-motion: no-preference) {
-        .pulse { animation: glow 2.4s ease-in-out infinite; }
+        .ttl { animation: fadeIn 0.4s ease 0.08s forwards; }
+        .draw { animation: drawStroke 0.65s cubic-bezier(0.2, 0.8, 0.3, 1) 0.35s forwards; }
+        .node {
+          transform-box: fill-box;
+          transform-origin: center bottom;
+          animation: rise 0.38s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
+        }
+        .n1 { animation-delay: 0.75s; }
+        .n2 { animation-delay: 0.83s; }
+        .n3 { animation-delay: 0.91s; }
+        .n4 { animation-delay: 0.99s; }
+        .n5 { animation-delay: 1.07s; }
+        .n6 { animation-delay: 1.15s; }
+        .legend { animation-delay: 1.28s; }
+        .alive { animation: rallyGlow 2.2s ease-in-out 1.85s infinite; }
       }
-      @keyframes glow {
-        0%, 100% { filter: drop-shadow(0 0 1px rgba(26,217,232,.25)) }
-        50% { filter: drop-shadow(0 0 7px rgba(26,217,232,.6)) }
+
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      @keyframes drawStroke {
+        from { stroke-dashoffset: 1; }
+        to { stroke-dashoffset: 0; }
+      }
+      @keyframes rise {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes rallyGlow {
+        0%, 100% { filter: drop-shadow(0 0 1px rgba(26,217,232,.25)); }
+        50% { filter: drop-shadow(0 0 7px rgba(26,217,232,.6)); }
       }
     ]]></style>
   </defs>
 
   <rect width="850" height="400" fill="#070a0e"/>
 
-  <text x="40" y="44" fill="#eef6f7" font-family="Chakra Petch, Bahnschrift, 'Segoe UI', sans-serif" font-size="20" font-weight="700" letter-spacing="1">MATCH FLOW</text>
-  <text x="40" y="68" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="12">Space advances the match. Charging only works during a rally.</text>
-
-  <!-- WSF singles floor ratio 6.4 : 9.75 (scaled to 64 x 97.5) -->
-  <g fill="none" stroke-linejoin="miter" stroke-linecap="butt">
-    <rect x="40" y="108" width="64" height="98" stroke="#f2f4f5" stroke-opacity=".45" stroke-width="1.5"/>
-    <line x1="40" y1="108" x2="104" y2="108" stroke="#f2f4f5" stroke-width="2"/>
-    <line x1="40" y1="168" x2="104" y2="168" stroke="#f2f4f5" stroke-opacity=".28" stroke-width="1"/>
-    <line x1="72" y1="168" x2="72" y2="206" stroke="#f2f4f5" stroke-opacity=".2" stroke-width="1"/>
-    <path d="M56 196 h32 v10 h-32 z" stroke="#f2f4f5" stroke-opacity=".35" stroke-width="1"/>
-    <text x="72" y="228" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="9" text-anchor="middle">6.4 x 9.75 m</text>
+  <g class="ttl">
+    <text x="40" y="44" fill="#eef6f7" font-family="Chakra Petch, Bahnschrift, 'Segoe UI', sans-serif" font-size="20" font-weight="700" letter-spacing="1">MATCH FLOW</text>
+    <text x="40" y="68" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="12">Space advances the match. Charging only works during a rally.</text>
   </g>
 
-  <line x1="140" y1="200" x2="810" y2="200" stroke="#f2f4f5" stroke-opacity=".28" stroke-width="2" stroke-linecap="butt"/>
+  <!-- structure: court ratio frame, rail, loop arcs -->
+  <g class="str" fill="none" stroke-linejoin="miter" stroke-linecap="butt">
+    <rect class="draw" pathLength="1" stroke-dasharray="1" x="40" y="108" width="64" height="98" stroke="#f2f4f5" stroke-opacity=".45" stroke-width="1.5"/>
+    <line class="draw" pathLength="1" stroke-dasharray="1" x1="40" y1="108" x2="104" y2="108" stroke="#f2f4f5" stroke-width="2"/>
+    <line class="draw" pathLength="1" stroke-dasharray="1" x1="40" y1="168" x2="104" y2="168" stroke="#f2f4f5" stroke-opacity=".28" stroke-width="1"/>
+    <line class="draw" pathLength="1" stroke-dasharray="1" x1="72" y1="168" x2="72" y2="206" stroke="#f2f4f5" stroke-opacity=".2" stroke-width="1"/>
+    <path class="draw" pathLength="1" stroke-dasharray="1" d="M56 196 h32 v10 h-32 z" stroke="#f2f4f5" stroke-opacity=".35" stroke-width="1"/>
+    <text x="72" y="228" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="9" text-anchor="middle">6.4 x 9.75 m</text>
+    <line class="draw" pathLength="1" stroke-dasharray="1" x1="140" y1="200" x2="810" y2="200" stroke="#f2f4f5" stroke-opacity=".28" stroke-width="2" stroke-linecap="butt"/>
+    <path class="draw" pathLength="1" stroke-dasharray="1" d="M448 164 C448 146 551 146 551 164" stroke="#9aadb2" stroke-width="1.2"/>
+    <path class="draw" pathLength="1" stroke-dasharray="1" d="M551 236 C551 254 448 254 448 236" stroke="#9aadb2" stroke-width="1.2"/>
+  </g>
 
   <!-- idle: dashed, waiting -->
-  <g>
+  <g class="node n1">
     <rect x="140" y="168" width="86" height="64" fill="#070a0e" stroke="#9aadb2" stroke-width="1.2" stroke-dasharray="4 3"/>
     <text x="183" y="195" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="12" text-anchor="middle">idle</text>
     <text x="183" y="214" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="9" text-anchor="middle">demo</text>
   </g>
 
   <!-- serving -->
-  <g>
+  <g class="node n2">
     <rect x="246" y="168" width="86" height="64" fill="#070a0e" stroke="#eef6f7" stroke-width="1.4"/>
     <text x="289" y="195" fill="#eef6f7" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="12" text-anchor="middle">serving</text>
     <text x="289" y="214" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="9" text-anchor="middle">ready</text>
   </g>
 
-  <!-- rally: live, breathing glow -->
-  <g>
-    <g class="pulse">
+  <!-- rally: live focal block -->
+  <g class="node n3">
+    <g class="alive">
       <rect x="352" y="168" width="96" height="64" fill="#070a0e" stroke="#1ad9e8" stroke-width="1.6"/>
     </g>
     <text x="400" y="195" fill="#1ad9e8" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="12" text-anchor="middle">rally</text>
@@ -58,32 +89,28 @@
   </g>
 
   <!-- point -->
-  <g>
+  <g class="node n4">
     <rect x="508" y="168" width="86" height="64" fill="#070a0e" stroke="#f06e14" stroke-width="1.4"/>
     <text x="551" y="195" fill="#f06e14" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="12" text-anchor="middle">point</text>
     <text x="551" y="214" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="9" text-anchor="middle">hold</text>
+    <text x="500" y="152" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="9" text-anchor="middle">repeats</text>
   </g>
 
-  <!-- rally / point repeat until someone wins the game -->
-  <path d="M448 164 C448 146 551 146 551 164" fill="none" stroke="#9aadb2" stroke-width="1.2"/>
-  <path d="M551 236 C551 254 448 254 448 236" fill="none" stroke="#9aadb2" stroke-width="1.2"/>
-  <text x="500" y="152" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="9" text-anchor="middle">repeats</text>
-
   <!-- game -->
-  <g>
+  <g class="node n5">
     <rect x="614" y="168" width="86" height="64" fill="#070a0e" stroke="#eef6f7" stroke-width="1.4"/>
     <text x="657" y="195" fill="#eef6f7" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="12" text-anchor="middle">game</text>
     <text x="657" y="214" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="9" text-anchor="middle">to 11</text>
   </g>
 
   <!-- match -->
-  <g>
+  <g class="node n6">
     <rect x="720" y="168" width="86" height="64" fill="#070a0e" stroke="#eef6f7" stroke-width="1.4"/>
     <text x="763" y="195" fill="#eef6f7" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="12" text-anchor="middle">match</text>
     <text x="763" y="214" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="9" text-anchor="middle">best of 3</text>
   </g>
 
-  <g font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="11">
+  <g class="node legend" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="11">
     <rect x="140" y="292" width="10" height="10" fill="#1ad9e8"/>
     <text x="158" y="301" fill="#eef6f7">you</text>
     <rect x="200" y="292" width="10" height="10" fill="#f06e14"/>

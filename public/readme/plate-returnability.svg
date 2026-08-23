@@ -8,62 +8,93 @@
       <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
     <style><![CDATA[
-      /* Static by default. The only motion is a slow breathing glow on the live
-         ball, matching the in-game tint; it never hides content, only brightens
-         a halo that's already visible. Off entirely under reduced motion. */
+      /* Base: fully visible for img embed, reduced motion, and no-JS. */
+      .ttl, .node { opacity: 1; transform: translateY(0); }
+      .draw { stroke-dashoffset: 0; }
+
       @media (prefers-reduced-motion: no-preference) {
-        .pulse { animation: glow 1.6s ease-in-out infinite; }
+        .ttl { animation: fadeIn 0.4s ease 0.08s forwards; }
+        .draw { animation: drawStroke 0.65s cubic-bezier(0.2, 0.8, 0.3, 1) 0.35s forwards; }
+        .node {
+          transform-box: fill-box;
+          transform-origin: center bottom;
+          animation: rise 0.38s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
+        }
+        .n1 { animation-delay: 0.75s; }
+        .n2 { animation-delay: 0.9s; }
+        .n3 { animation-delay: 1.05s; }
+        .n4 { animation-delay: 1.2s; }
+        .n5 { animation-delay: 1.35s; }
+        .alive { animation: liveGlow 1.8s ease-in-out 1.85s infinite; }
       }
-      @keyframes glow {
-        0%, 100% { filter: drop-shadow(0 0 2px rgba(26,217,232,.25)) }
-        50% { filter: drop-shadow(0 0 8px rgba(26,217,232,.7)) }
+
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      @keyframes drawStroke {
+        from { stroke-dashoffset: 1; }
+        to { stroke-dashoffset: 0; }
+      }
+      @keyframes rise {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes liveGlow {
+        0%, 100% { filter: drop-shadow(0 0 2px rgba(26,217,232,.25)); }
+        50% { filter: drop-shadow(0 0 8px rgba(26,217,232,.7)); }
       }
     ]]></style>
   </defs>
 
   <rect width="850" height="380" fill="#070a0e"/>
 
-  <text x="40" y="44" fill="#eef6f7" font-family="Chakra Petch, Bahnschrift, 'Segoe UI', sans-serif" font-size="20" font-weight="700" letter-spacing="1">RETURNABILITY</text>
-  <text x="40" y="68" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="12">WSF rule 6.2: side and back wall contact do not make the ball live again.</text>
+  <g class="ttl">
+    <text x="40" y="44" fill="#eef6f7" font-family="Chakra Petch, Bahnschrift, 'Segoe UI', sans-serif" font-size="20" font-weight="700" letter-spacing="1">RETURNABILITY</text>
+    <text x="40" y="68" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="12">WSF rule 6.2: side and back wall contact do not make the ball live again.</text>
+  </g>
+
+  <!-- structure: both court outlines -->
+  <g class="str" fill="none" stroke-linejoin="miter" stroke-linecap="butt">
+    <rect class="draw" pathLength="1" stroke-dasharray="1" x="40" y="114" width="138" height="210" stroke="#f2f4f5" stroke-opacity=".4" stroke-width="1.4"/>
+    <line class="draw" pathLength="1" stroke-dasharray="1" x1="40" y1="114" x2="178" y2="114" stroke="#f2f4f5" stroke-width="2.2"/>
+    <line class="draw" pathLength="1" stroke-dasharray="1" x1="40" y1="246" x2="178" y2="246" stroke="#f2f4f5" stroke-opacity=".25" stroke-width="1"/>
+    <line class="draw" pathLength="1" stroke-dasharray="1" x1="109" y1="246" x2="109" y2="324" stroke="#f2f4f5" stroke-opacity=".18" stroke-width="1"/>
+    <rect class="draw" pathLength="1" stroke-dasharray="1" x="69" y="246" width="40" height="34" stroke="#f2f4f5" stroke-opacity=".22" stroke-width="1"/>
+    <rect class="draw" pathLength="1" stroke-dasharray="1" x="109" y="246" width="40" height="34" stroke="#f2f4f5" stroke-opacity=".22" stroke-width="1"/>
+    <rect class="draw" pathLength="1" stroke-dasharray="1" x="260" y="114" width="138" height="210" stroke="#f2f4f5" stroke-opacity=".4" stroke-width="1.4"/>
+    <line class="draw" pathLength="1" stroke-dasharray="1" x1="260" y1="114" x2="398" y2="114" stroke="#1ad9e8" stroke-width="2.2"/>
+    <line class="draw" pathLength="1" stroke-dasharray="1" x1="260" y1="246" x2="398" y2="246" stroke="#f2f4f5" stroke-opacity=".25" stroke-width="1"/>
+    <line class="draw" pathLength="1" stroke-dasharray="1" x1="329" y1="246" x2="329" y2="324" stroke="#f2f4f5" stroke-opacity=".18" stroke-width="1"/>
+    <rect class="draw" pathLength="1" stroke-dasharray="1" x="289" y="246" width="40" height="34" stroke="#f2f4f5" stroke-opacity=".22" stroke-width="1"/>
+    <rect class="draw" pathLength="1" stroke-dasharray="1" x="329" y="246" width="40" height="34" stroke="#f2f4f5" stroke-opacity=".22" stroke-width="1"/>
+  </g>
 
   <!-- left court: side contact, dead -->
-  <g>
+  <g class="node n1">
     <text x="40" y="100" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="11">SIDE WALL</text>
-    <!-- court 6.4:9.75 scaled about 2.15x, roughly 138 x 210 -->
-    <g fill="none" stroke-linejoin="miter" stroke-linecap="butt">
-      <rect x="40" y="114" width="138" height="210" stroke="#f2f4f5" stroke-opacity=".4" stroke-width="1.4"/>
-      <line x1="40" y1="114" x2="178" y2="114" stroke="#f2f4f5" stroke-width="2.2"/>
-      <line x1="40" y1="246" x2="178" y2="246" stroke="#f2f4f5" stroke-opacity=".25" stroke-width="1"/>
-      <line x1="109" y1="246" x2="109" y2="324" stroke="#f2f4f5" stroke-opacity=".18" stroke-width="1"/>
-      <rect x="69" y="246" width="40" height="34" stroke="#f2f4f5" stroke-opacity=".22" stroke-width="1"/>
-      <rect x="109" y="246" width="40" height="34" stroke="#f2f4f5" stroke-opacity=".22" stroke-width="1"/>
-    </g>
     <text x="109" y="128" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="8" text-anchor="middle">front</text>
     <circle cx="46" cy="200" r="6" fill="#f2f4f5"/>
     <text x="40" y="348" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="11">still dead</text>
   </g>
 
   <!-- right court: front contact, live -->
-  <g>
+  <g class="node n2">
     <text x="260" y="100" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="11">FRONT WALL</text>
-    <g fill="none" stroke-linejoin="miter" stroke-linecap="butt">
-      <rect x="260" y="114" width="138" height="210" stroke="#f2f4f5" stroke-opacity=".4" stroke-width="1.4"/>
-      <line x1="260" y1="114" x2="398" y2="114" stroke="#1ad9e8" stroke-width="2.2"/>
-      <line x1="260" y1="246" x2="398" y2="246" stroke="#f2f4f5" stroke-opacity=".25" stroke-width="1"/>
-      <line x1="329" y1="246" x2="329" y2="324" stroke="#f2f4f5" stroke-opacity=".18" stroke-width="1"/>
-      <rect x="289" y="246" width="40" height="34" stroke="#f2f4f5" stroke-opacity=".22" stroke-width="1"/>
-      <rect x="329" y="246" width="40" height="34" stroke="#f2f4f5" stroke-opacity=".22" stroke-width="1"/>
-    </g>
     <text x="329" y="128" fill="#1ad9e8" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="8" text-anchor="middle">front</text>
-    <g class="pulse">
+    <g class="alive">
       <circle cx="329" cy="122" r="6" fill="#1ad9e8" filter="url(#liveBall)"/>
     </g>
     <text x="260" y="348" fill="#1ad9e8" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="11">live, striker colour</text>
   </g>
 
-  <g font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="12" fill="#9aadb2">
+  <g class="node n3" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="12" fill="#9aadb2">
     <text x="480" y="140">The floor never restores it either.</text>
+  </g>
+  <g class="node n4" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="12" fill="#9aadb2">
     <text x="480" y="164">Volleys after the front wall are still legal.</text>
+  </g>
+  <g class="node n5" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="12" fill="#9aadb2">
     <text x="480" y="188">A boast is dead until it reaches the front wall.</text>
     <text x="480" y="228" fill="#eef6f7">The ball itself is the only signal.</text>
     <text x="480" y="252">No halo or icon, just the tint.</text>

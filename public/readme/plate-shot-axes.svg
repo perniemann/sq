@@ -2,16 +2,68 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 850 440" width="850" height="440" role="img">
   <title>Shot controls: holding Space sets shot length, dragging left or right sets width, dragging up or down sets attack plane (front wall side is from above, back wall side is from below).</title>
   <desc>Left half is chase on Shift. Right half is the shot: a length bar showing tap, drive, and full; a width arc; and a vertical attack-plane rail.</desc>
+  <defs>
+    <style><![CDATA[
+      /* Base: fully visible for img embed, reduced motion, and no-JS. */
+      .ttl, .node { opacity: 1; transform: translateY(0); }
+      .draw { stroke-dashoffset: 0; }
+      .alive-dot { opacity: 1; }
+
+      @media (prefers-reduced-motion: no-preference) {
+        .ttl { animation: fadeIn 0.4s ease 0.08s forwards; }
+        .draw { animation: drawStroke 0.65s cubic-bezier(0.2, 0.8, 0.3, 1) 0.35s forwards; }
+        .node {
+          transform-box: fill-box;
+          transform-origin: center bottom;
+          animation: rise 0.38s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
+        }
+        .n1 { animation-delay: 0.75s; }
+        .n2 { animation-delay: 0.88s; }
+        .n3 { animation-delay: 1.01s; }
+        .n4 { animation-delay: 1.14s; }
+        .alive-dot { animation: cursorBlink 1.4s step-end 1.85s infinite; }
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      @keyframes drawStroke {
+        from { stroke-dashoffset: 1; }
+        to { stroke-dashoffset: 0; }
+      }
+      @keyframes rise {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes cursorBlink {
+        0%, 45% { opacity: 1; }
+        50%, 95% { opacity: 0.15; }
+        100% { opacity: 1; }
+      }
+    ]]></style>
+  </defs>
 
   <rect width="850" height="440" fill="#070a0e"/>
 
-  <text x="40" y="44" fill="#eef6f7" font-family="Chakra Petch, Bahnschrift, 'Segoe UI', sans-serif" font-size="20" font-weight="700" letter-spacing="1">SHOT CONTROLS</text>
-  <text x="40" y="68" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="12">Hold sets length. Drag X sets width. Drag Y sets attack plane.</text>
+  <g class="ttl">
+    <text x="40" y="44" fill="#eef6f7" font-family="Chakra Petch, Bahnschrift, 'Segoe UI', sans-serif" font-size="20" font-weight="700" letter-spacing="1">SHOT CONTROLS</text>
+    <text x="40" y="68" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="12">Hold sets length. Drag X sets width. Drag Y sets attack plane.</text>
+  </g>
 
-  <line x1="425" y1="92" x2="425" y2="400" stroke="#f2f4f5" stroke-opacity=".18" stroke-width="1"/>
+  <!-- structure: divider, length track, width arc, attack-plane rail -->
+  <g class="str" fill="none" stroke-linecap="butt">
+    <line class="draw" pathLength="1" stroke-dasharray="1" x1="425" y1="92" x2="425" y2="400" stroke="#f2f4f5" stroke-opacity=".18" stroke-width="1"/>
+    <rect class="draw" pathLength="1" stroke-dasharray="1" x="450" y="208" width="280" height="8" stroke="#f2f4f5" stroke-opacity=".28" stroke-width="1"/>
+    <path class="draw" pathLength="1" stroke-dasharray="1" d="M470 330 A 120 120 0 0 1 710 330" stroke="#eef6f7" stroke-width="1.4"/>
+    <line class="draw" pathLength="1" stroke-dasharray="1" x1="800" y1="176" x2="800" y2="360" stroke="#f2f4f5" stroke-opacity=".35" stroke-width="1.4"/>
+    <line class="draw" pathLength="1" stroke-dasharray="1" x1="794" y1="176" x2="806" y2="176" stroke="#eef6f7" stroke-width="1.4"/>
+    <line class="draw" pathLength="1" stroke-dasharray="1" x1="794" y1="268" x2="806" y2="268" stroke="#9aadb2" stroke-width="1.2"/>
+    <line class="draw" pathLength="1" stroke-dasharray="1" x1="794" y1="360" x2="806" y2="360" stroke="#eef6f7" stroke-width="1.4"/>
+  </g>
 
   <!-- left: chase -->
-  <g>
+  <g class="node n1">
     <text x="40" y="108" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="11">LEFT HALF</text>
     <text x="40" y="136" fill="#eef6f7" font-family="Chakra Petch, Bahnschrift, 'Segoe UI', sans-serif" font-size="18" font-weight="700">CHASE</text>
     <text x="40" y="160" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="12">Shift, or right mouse button, held</text>
@@ -22,14 +74,12 @@
     <text x="40" y="378" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="11">Timing it with the shot is the game.</text>
   </g>
 
-  <!-- right: shot -->
-  <g>
+  <!-- right: shot header + length -->
+  <g class="node n2">
     <text x="450" y="108" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="11">RIGHT HALF</text>
     <text x="450" y="136" fill="#eef6f7" font-family="Chakra Petch, Bahnschrift, 'Segoe UI', sans-serif" font-size="18" font-weight="700">SHOT</text>
     <text x="450" y="160" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="12">Space, or left mouse button, held then released</text>
-
     <text x="450" y="196" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="10">LENGTH, 120 to 750 ms</text>
-    <rect x="450" y="208" width="280" height="8" fill="none" stroke="#f2f4f5" stroke-opacity=".28" stroke-width="1"/>
     <rect x="450" y="208" width="280" height="8" fill="#1ad9e8"/>
     <g>
       <line x1="450" y1="208" x2="450" y2="226" stroke="#eef6f7" stroke-width="1.2"/>
@@ -43,24 +93,21 @@
       <line x1="730" y1="208" x2="730" y2="226" stroke="#eef6f7" stroke-width="1.2"/>
       <text x="730" y="240" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="9" text-anchor="end">full</text>
     </g>
+  </g>
 
-    <!-- width arc -->
+  <!-- width labels -->
+  <g class="node n3">
     <text x="450" y="272" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="10">WIDTH, DRAG X</text>
-    <path d="M470 330 A 120 120 0 0 1 710 330" fill="none" stroke="#eef6f7" stroke-width="1.4"/>
     <text x="470" y="348" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="9" text-anchor="middle">boast</text>
     <text x="590" y="318" fill="#eef6f7" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="9" text-anchor="middle">straight</text>
     <text x="710" y="348" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="9" text-anchor="middle">boast</text>
+  </g>
 
-    <!-- attack plane rail: front wall side is from above -->
-    <g>
-      <line x1="800" y1="176" x2="800" y2="360" stroke="#f2f4f5" stroke-opacity=".35" stroke-width="1.4"/>
-      <line x1="794" y1="176" x2="806" y2="176" stroke="#eef6f7" stroke-width="1.4"/>
-      <line x1="794" y1="268" x2="806" y2="268" stroke="#9aadb2" stroke-width="1.2"/>
-      <line x1="794" y1="360" x2="806" y2="360" stroke="#eef6f7" stroke-width="1.4"/>
-      <text x="788" y="180" fill="#eef6f7" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="9" text-anchor="end">front wall, above</text>
-      <text x="788" y="272" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="9" text-anchor="end">neutral</text>
-      <text x="788" y="364" fill="#eef6f7" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="9" text-anchor="end">back wall, below</text>
-    </g>
-    <circle cx="800" cy="248" r="4" fill="#1ad9e8"/>
+  <!-- attack plane labels + alive dot -->
+  <g class="node n4">
+    <text x="788" y="180" fill="#eef6f7" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="9" text-anchor="end">front wall, above</text>
+    <text x="788" y="272" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="9" text-anchor="end">neutral</text>
+    <text x="788" y="364" fill="#eef6f7" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="9" text-anchor="end">back wall, below</text>
+    <circle class="alive-dot" cx="800" cy="248" r="4" fill="#1ad9e8"/>
   </g>
 </svg>
