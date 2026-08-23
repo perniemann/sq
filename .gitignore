@@ -30,3 +30,12 @@ coverage/
 
 # Release Please / tooling caches
 .cache/
+
+# Local process artifacts (not published)
+docs/audits/
+docs/plans/
+docs/discovery/
+docs/research/
+docs/media/
+docs/svg/
+docs/GAME_LOOP_AND_LOGIC_REVIEW.md

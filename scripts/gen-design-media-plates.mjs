@@ -125,18 +125,4 @@ for (const p of plates) {
   console.log('wrote', p.file)
 }
 
-writeFileSync(
-  join(OUT, 'README.md'),
-  [
-    '# design-media',
-    '',
-    'Play-section evidence for `/design`.',
-    '',
-    '- `journey-*.svg` — authored court plates (fixtures). Prefer these in CI/headless.',
-    '- Live WebGL PNG capture: `node scripts/capture-design-media.mjs` with `npm run dev`',
-    '  and `?nobloom` (requires usable GPU WebGL; SwiftShader often yields black frames).',
-    '',
-  ].join('\n'),
-  'utf8',
-)
 console.log('done')

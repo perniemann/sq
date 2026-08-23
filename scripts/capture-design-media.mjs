@@ -147,28 +147,6 @@ const PATCHES = {
       buttonA: { pressed: true, holdStart: Date.now() - 600, holdDuration: 0.6 },
     })
   `,
-  chaseOff: `
-    const { useGameStore } = await import('/src/stores/gameStore.ts')
-    const s = useGameStore.getState()
-    s.setDemoMode(false)
-    s.setPhase('rally')
-    s.setRallyState('active')
-    s.setCanHit(true)
-    s.setCurrentStriker('player')
-    ${PLACE_RALLY_BALL}
-  `,
-  chaseOn: `
-    const { useGameStore } = await import('/src/stores/gameStore.ts')
-    const { useInputStore } = await import('/src/hooks/useInput.ts')
-    const s = useGameStore.getState()
-    s.setDemoMode(false)
-    s.setPhase('rally')
-    s.setRallyState('active')
-    s.setCanHit(true)
-    s.setCurrentStriker('player')
-    useInputStore.setState({ buttonB: { pressed: true, pressStart: Date.now() - 150 } })
-    ${PLACE_RALLY_BALL}
-  `,
   tinFlashOnly: `
     const { useGameStore } = await import('/src/stores/gameStore.ts')
     useGameStore.getState().signalTinHit()
@@ -236,8 +214,6 @@ const SHOTS = [
   ['capture-match-over', '?nodemo', 'matchOver', 420, 150],
   ['capture-charge-prep', '?nodemo&ball', 'chargePrep', 420, 120],
   ['capture-charge-power', '?nodemo&ball', 'chargePower', 420, 120],
-  ['capture-chase-off', withBigBall('?nodemo'), 'chaseOff', 420, 150],
-  ['capture-chase-on', withBigBall('?nodemo'), 'chaseOn', 420, 150],
   ['capture-tin-idle', '?nodemo&tin', 'none', 500, 0],
   ['capture-tin-flash', '?nodemo&tin', 'tinFlashOnly', 500, 100],
   // Reduced motion + a pixel check: the tint pulse is a multi-frame animation and this
