@@ -12,6 +12,8 @@
 
 <p align="center">
   <a href="https://sq.perniemann.com">https://sq.perniemann.com</a>
+  ·
+  <a href="https://sq.perniemann.com/design">design reference</a>
 </p>
 
 <div align="center">
