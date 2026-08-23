@@ -57,9 +57,9 @@ export function PlaySection(): ReactElement {
   return (
     <RefSection id="dr-play" title="Play" kicker="Every reachable phase">
       <p style={{ ...drHint, marginTop: 0, marginBottom: 24 }}>
-        Real WebGL stills and authored journey fixtures — one per phase the state machine can
-        reach. PNG captures where the GPU cooperates; SVG fixtures carry the ball at README scale
-        when whole-court captures read as empty.
+        Real WebGL stills from the running build — one per phase the state machine can
+        reach, captured by driving <code>gameStore</code> directly and screenshotting
+        (<code>scripts/capture-design-media.mjs</code>). No renders, no mockups.
       </p>
       <div
         style={{
