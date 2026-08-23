@@ -5,6 +5,20 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.7](https://github.com/perniemann/sq/compare/v0.1.6...v0.1.7) (2026-08-23)
+
+
+### Bug Fixes
+
+* **/design:** show balls in Play section via journey fixtures ([446a424](https://github.com/perniemann/sq/commit/446a4247274079d2de094efd81a11084175f973b))
+* **/design:** use WebGL capture PNGs for Play journey stills ([ad26807](https://github.com/perniemann/sq/commit/ad2680726e89878528e201ceb8b76bbefa173464))
+* recapture /design plates so the ball is visible ([add7646](https://github.com/perniemann/sq/commit/add76464d05d9f4a17c12508c4981bc80e302379))
+
+
+### Reverts
+
+* **/design:** restore Play section to WebGL capture PNGs ([2d4df13](https://github.com/perniemann/sq/commit/2d4df13445de4deba146c783459192422ec37ebc))
+
 ## [0.1.6](https://github.com/perniemann/sq/compare/v0.1.5...v0.1.6) (2026-08-23)
 
 
