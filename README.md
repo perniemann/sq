@@ -15,6 +15,10 @@
 </p>
 
 <p align="center">
+  <img src="public/design-media/capture-hero.png" alt="Idle court from behind the back wall: sq lockup and click-or-space on the front wall, cyan and orange athletes, diegetic 0–0 on the tin." width="850">
+</p>
+
+<p align="center">
   <img src="public/readme/plate-match-rail.svg" alt="Match flow: idle, then serving, then rally and point alternate, then game, then match. Space advances the match. Charging only works during a rally." width="850">
 </p>
 
@@ -38,6 +42,10 @@ Open the local URL Vite prints (usually `http://localhost:5173`).
 ## Controls
 
 Hold Space to charge a shot, then release. How long you hold sets the length; drag while charging to set width and attack angle. Hold Shift to chase the ball.
+
+<p align="center">
+  <img src="public/design-media/capture-charge-prep.png" alt="Player close-up in the right service box: cyan athlete, orange ball, and early charge pose." width="850">
+</p>
 
 <p align="center">
   <img src="public/readme/plate-shot-axes.svg" alt="Shot controls: holding Space sets shot length, dragging left or right sets width, dragging up or down sets attack plane (front wall side is from above, back wall side is from below)." width="850">
