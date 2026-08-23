@@ -5,6 +5,33 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.4](https://github.com/perniemann/sq/compare/v0.1.3...v0.1.4) (2026-08-23)
+
+
+### Features
+
+* fit-parity /design product catalog ([ca9920d](https://github.com/perniemann/sq/commit/ca9920d9ebc01c76035d82e5ef27172907de4e01))
+* gate canHit on front-wall returnability and tighten serve/ready pose ([9efeee0](https://github.com/perniemann/sq/commit/9efeee0b02bfd3718b020a9e681ebdb3c099c603))
+* loft stick, length charge bands, assist, and teach tips ([d3f04aa](https://github.com/perniemann/sq/commit/d3f04aa7dbbbba1b90a89481fca8411a4fc3872f))
+* public /design reference catalog for sq_ ([#4](https://github.com/perniemann/sq/issues/4)) ([2ccaae8](https://github.com/perniemann/sq/commit/2ccaae8049ace5a2928f7728965962c9765df962))
+* raise /design to fit-parity product catalog ([8e7f969](https://github.com/perniemann/sq/commit/8e7f969fb7560d54aecea806747e3e19b77d8d5d))
+* re-author visual system and add /design reference ([4d58880](https://github.com/perniemann/sq/commit/4d588806b8c54eaecc28330df6a3cf065c408c6b))
+* re-author visual system and add /design reference ([ef7954b](https://github.com/perniemann/sq/commit/ef7954b07c96707685cc06c27b8bca43aa9e3c6f))
+* side-wall-first aim, timing accuracy, and charge-ring shot hints ([d1a90a4](https://github.com/perniemann/sq/commit/d1a90a430d08e9a322462f0a72b369c0015de02e))
+* simplify sq_ mark to frame and orange wedge ([3c6b8a4](https://github.com/perniemann/sq/commit/3c6b8a421bc70958c3f8e626299f7d6315752fae))
+* **theme:** add HUD fonts and black/white court palette ([7344c67](https://github.com/perniemann/sq/commit/7344c67c7d275a0aa20fb46f11d1967e8ebfe5b8))
+* **ui:** move match chrome to diegetic WorldHud ([e9e6c88](https://github.com/perniemann/sq/commit/e9e6c880a319fcef0ed17e49914f4df051c64b25))
+* wire WorldHud, charge ring, and returnable ball into the scene ([a1438c1](https://github.com/perniemann/sq/commit/a1438c171ec84c138c3549871c45843dd4cc6915))
+
+
+### Bug Fixes
+
+* bootstrap Release Please baseline and tidy version HUD. ([d5add99](https://github.com/perniemann/sq/commit/d5add996fb012cce4fcbbd2fc751cdce9b0196c8))
+* make SEO head tags crawler-parser friendly ([2da898e](https://github.com/perniemann/sq/commit/2da898ea41e7f09225683cc0ff8659e3b0bc0c74))
+* raise SEO with static shell and discovery files ([808c00d](https://github.com/perniemann/sq/commit/808c00de6171c23b598eba6b7fa605c470db2910))
+* serve OG preview as og-image.png to dodge CF 404 cache ([91e4c55](https://github.com/perniemann/sq/commit/91e4c557dbeb4bb6b4e3b46054fe3269454708a2))
+* use 1200x630 court shot for social OG previews ([f19e559](https://github.com/perniemann/sq/commit/f19e55955287fc31be5eefc6567ed40bf4205fce))
+
 ## [0.1.3](https://github.com/perniemann/sq/compare/v0.1.2...v0.1.3) (2026-08-21)
 
 
