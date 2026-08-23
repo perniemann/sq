@@ -111,4 +111,4 @@ See [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
-Private / unpublished unless otherwise noted.
+MIT, see [LICENSE](LICENSE).
