@@ -8,14 +8,14 @@
 <!-- x-release-please-end -->
 </p>
 
-<p align="center">Browser squash on a WSF court. Two buttons. The ball tells you when it is live.</p>
+<p align="center">A 3D squash game you play in the browser against an AI opponent. WSF court dimensions, two-button controls, PARS-11 scoring.</p>
 
 <p align="center">
   <a href="https://sq.perniemann.com">https://sq.perniemann.com</a>
 </p>
 
 <p align="center">
-  <img src="public/readme/plate-match-rail.svg" alt="The match is a rail: idle to serving to rally exchanging with point, then game and match. Button A advances phases. Rally is the only place charge lives." width="850">
+  <img src="public/readme/plate-match-rail.svg" alt="Match flow: idle, then serving, then rally and point alternate, then game, then match. Space advances the match. Charging only works during a rally." width="850">
 </p>
 
 ## Play
@@ -35,12 +35,12 @@ Open the local URL Vite prints (usually `http://localhost:5173`).
   <img src="public/design-media/journey-match-over.svg" alt="Match over on the front wall" width="156">
 </p>
 
-## Two buttons, three axes
+## Controls
 
-Space is not a power meter. Hold sets length. Aim X sets width. Stick Y sets attack plane.
+Hold Space to charge a shot, then release. How long you hold sets the length; drag while charging to set width and attack angle. Hold Shift to chase the ball.
 
 <p align="center">
-  <img src="public/readme/plate-shot-axes.svg" alt="Space is not a power meter. Hold sets length. Aim X sets width. Stick Y sets attack plane: toward the front wall from above, toward you from below." width="850">
+  <img src="public/readme/plate-shot-axes.svg" alt="Shot controls: holding Space sets shot length, dragging left or right sets width, dragging up or down sets attack plane (front wall side is from above, back wall side is from below)." width="850">
 </p>
 
 | Action | Mouse / keyboard | Touch |
@@ -49,31 +49,31 @@ Space is not a power meter. Hold sets length. Aim X sets width. Stick Y sets att
 | Aim (width; extreme → side-first boast) / attack plane (front=above · back=below) while charging | Drag X/Y, or **A**/**D** + **W**/**S** (arrows) | Drag X/Y on **right** half |
 | Chase the ball | **Shift** / **RMB** | Hold **left** half |
 
-## Front wall makes it live
+## Returnability
 
-`canHit` restores only after the front wall (WSF 6.2). Side, back, and floor do not.
+The ball goes dead after every shot. It only becomes returnable again once it touches the front wall (WSF rule 6.2). A side or back wall touch doesn't count, and neither does the floor.
 
 <p align="center">
-  <img src="public/readme/plate-returnability.svg" alt="canHit restores only after the front wall. A side-wall or back-wall touch leaves the ball dead. Front-wall contact tints the ball in the striker colour (WSF 6.2)." width="850">
+  <img src="public/readme/plate-returnability.svg" alt="Returnability: the ball is dead until it touches the front wall. Side and back wall contact do not count. Once the front wall is hit, the ball tints in the striker's colour (WSF rule 6.2)." width="850">
 </p>
 
-Scoring is PARS-11, win by 2 at 10–10, best of 3. Full controls and scoring: [docs/HOW-TO-PLAY.md](docs/HOW-TO-PLAY.md).
+Scoring is PARS-11: games to 11, win by 2 at 10-10, best of 3 games. Full controls and scoring: [docs/HOW-TO-PLAY.md](docs/HOW-TO-PLAY.md).
 
-## Honest edges
+## Known limitations
 
-| Edge | What it is |
-|------|------------|
-| Returnability | `canHit` restores only on front-wall contact |
-| Hit zone | Racquet collider and 1.2 m proximity check are oversized on purpose |
-| Ball | WSF radius; mass is light for pace |
-| Bundle | Rapier is most of the download |
-| Scene | Re-renders more often than it should |
+| Area | Note |
+|------|------|
+| Returnability | Restores only on front-wall contact, as above |
+| Hit zone | Racquet collider and proximity check are oversized on purpose, for forgiveness |
+| Ball | WSF radius, but the mass is light so it moves faster |
+| Bundle size | Rapier (physics) is most of the download |
+| Scene | Re-renders more than it should |
 
 ## Stack
 
 Vite 6 · React 19 · React Three Fiber 9 · Three.js r182 · Rapier · Zustand 5 · TypeScript 5.7 strict · Vitest
 
-No backend, env files, or network calls — entirely client-side.
+No backend, no env files, no network calls. Entirely client-side.
 
 ## Scripts
 
@@ -93,13 +93,13 @@ Play at [https://sq.perniemann.com](https://sq.perniemann.com). CI builds the st
 
 ## Versioning
 
-Industry-standard SemVer + [Conventional Commits](https://www.conventionalcommits.org/) + [Release Please](https://github.com/googleapis/release-please):
+SemVer, with [Conventional Commits](https://www.conventionalcommits.org/) and [Release Please](https://github.com/googleapis/release-please):
 
 - **Source of truth:** `package.json` → `version`
 - **Runtime:** Vite injects `VITE_APP_VERSION` at config load; the idle HUD and document title show `vX.Y.Z`
 - **Automation:** merges to `main` with `feat:` / `fix:` / breaking `!` open a Release Please PR that bumps SemVer, updates `CHANGELOG.md`, syncs this README version line, tags `vX.Y.Z`, and publishes a GitHub Release
 - **Bootstrap:** `v0.1.0` is tagged as the baseline so Release Please can find the last release; without that tag it warns `Expected 1 releases, only found 0`
-- **Pre-1.0:** `bump-minor-pre-major` — features bump `0.y.0`, fixes bump `0.y.z` (no accidental 1.0)
+- **Pre-1.0:** `bump-minor-pre-major`, so features bump `0.y.0` and fixes bump `0.y.z` (no accidental 1.0)
 
 Commit message prefixes that drive bumps:
 

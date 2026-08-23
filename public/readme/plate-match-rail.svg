@@ -1,109 +1,95 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 850 400" width="850" height="400" role="img">
-  <title>The match is a rail: idle to serving to rally exchanging with point, then game and match. Button A advances phases. Rally is the only place charge lives.</title>
-  <desc>WSF court-ratio frame at left. Phase blocks on a single rail. You in player cyan, AI in opponent orange. Idle is dashed. Rally pulses once. Point cuts in hard.</desc>
+  <title>Match flow: idle, then serving, then rally and point alternate, then game, then match. Space advances the match. Charging only works during a rally.</title>
+  <desc>WSF court-ratio frame at left. Phase blocks on a single rail. You in player cyan, AI in opponent orange. Idle is dashed, waiting. Rally pulses once. Point cuts in hard.</desc>
   <defs>
     <style><![CDATA[
+      /* Static by default so it reads the same everywhere it's embedded. The only
+         motion is a slow breathing glow on the live "rally" block, which never
+         hides content, it just pulses brighter. Off entirely under reduced motion. */
       @media (prefers-reduced-motion: no-preference) {
-        .ttl, .sub, .court, .ph, .leg { opacity: 0; animation: fade .4s ease forwards; }
-        .ttl { animation-delay: .08s }
-        .sub { animation-delay: .2s }
-        .court { animation-delay: .28s }
-        .p0 { animation-delay: .7s }
-        .p1 { animation-delay: .95s }
-        .p2 { animation-delay: 1.2s }
-        .p3 { animation-delay: 1.2s }
-        .p4 { animation-delay: 1.55s }
-        .p5 { animation-delay: 1.8s }
-        .leg { animation-delay: 1.95s }
-        .rail { stroke-dasharray: 680; stroke-dashoffset: 680; animation: draw .7s ease .45s forwards; }
-        .loop { stroke-dasharray: 90; stroke-dashoffset: 90; animation: draw .4s ease 1.45s forwards; }
-        .once { animation: glowonce .7s ease 1.35s 1; }
+        .pulse { animation: glow 2.4s ease-in-out infinite; }
       }
-
-      @keyframes fade { to { opacity: 1 } }
-      @keyframes draw { to { stroke-dashoffset: 0 } }
-      @keyframes glowonce {
-        0% { filter: none }
-        50% { filter: drop-shadow(0 0 8px rgba(26,217,232,.7)) }
-        100% { filter: none }
+      @keyframes glow {
+        0%, 100% { filter: drop-shadow(0 0 1px rgba(26,217,232,.25)) }
+        50% { filter: drop-shadow(0 0 7px rgba(26,217,232,.6)) }
       }
     ]]></style>
   </defs>
 
   <rect width="850" height="400" fill="#070a0e"/>
 
-  <text class="ttl" x="40" y="44" fill="#eef6f7" font-family="Chakra Petch, Bahnschrift, 'Segoe UI', sans-serif" font-size="22" font-weight="700" letter-spacing="1.2">THE MATCH IS A RAIL</text>
-  <text class="sub" x="40" y="68" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="12">Button A advances. Rally is where charge lives.</text>
+  <text x="40" y="44" fill="#eef6f7" font-family="Chakra Petch, Bahnschrift, 'Segoe UI', sans-serif" font-size="20" font-weight="700" letter-spacing="1">MATCH FLOW</text>
+  <text x="40" y="68" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="12">Space advances the match. Charging only works during a rally.</text>
 
-  <!-- WSF singles floor ratio 6.4 : 9.75 (= 128 : 195), scaled to 64 × 97.5 -->
-  <g class="court" fill="none" stroke-linejoin="miter" stroke-linecap="butt">
+  <!-- WSF singles floor ratio 6.4 : 9.75 (scaled to 64 x 97.5) -->
+  <g fill="none" stroke-linejoin="miter" stroke-linecap="butt">
     <rect x="40" y="108" width="64" height="98" stroke="#f2f4f5" stroke-opacity=".45" stroke-width="1.5"/>
     <line x1="40" y1="108" x2="104" y2="108" stroke="#f2f4f5" stroke-width="2"/>
     <line x1="40" y1="168" x2="104" y2="168" stroke="#f2f4f5" stroke-opacity=".28" stroke-width="1"/>
     <line x1="72" y1="168" x2="72" y2="206" stroke="#f2f4f5" stroke-opacity=".2" stroke-width="1"/>
     <path d="M56 196 h32 v10 h-32 z" stroke="#f2f4f5" stroke-opacity=".35" stroke-width="1"/>
-    <text x="72" y="228" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="9" text-anchor="middle">6.4 × 9.75</text>
+    <text x="72" y="228" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="9" text-anchor="middle">6.4 x 9.75 m</text>
   </g>
 
-  <line class="rail" x1="140" y1="200" x2="810" y2="200" stroke="#f2f4f5" stroke-opacity=".28" stroke-width="2" stroke-linecap="butt"/>
+  <line x1="140" y1="200" x2="810" y2="200" stroke="#f2f4f5" stroke-opacity=".28" stroke-width="2" stroke-linecap="butt"/>
 
-  <!-- idle: dashed / queued -->
-  <g class="ph p0">
+  <!-- idle: dashed, waiting -->
+  <g>
     <rect x="140" y="168" width="86" height="64" fill="#070a0e" stroke="#9aadb2" stroke-width="1.2" stroke-dasharray="4 3"/>
     <text x="183" y="195" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="12" text-anchor="middle">idle</text>
     <text x="183" y="214" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="9" text-anchor="middle">demo</text>
   </g>
 
   <!-- serving -->
-  <g class="ph p1">
+  <g>
     <rect x="246" y="168" width="86" height="64" fill="#070a0e" stroke="#eef6f7" stroke-width="1.4"/>
     <text x="289" y="195" fill="#eef6f7" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="12" text-anchor="middle">serving</text>
     <text x="289" y="214" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="9" text-anchor="middle">ready</text>
   </g>
 
-  <!-- rally: live, pulse once -->
-  <g class="ph p2">
-    <g class="once">
+  <!-- rally: live, breathing glow -->
+  <g>
+    <g class="pulse">
       <rect x="352" y="168" width="96" height="64" fill="#070a0e" stroke="#1ad9e8" stroke-width="1.6"/>
     </g>
     <text x="400" y="195" fill="#1ad9e8" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="12" text-anchor="middle">rally</text>
     <text x="400" y="214" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="9" text-anchor="middle">charge</text>
   </g>
 
-  <!-- point: hard cut, same delay as rally so the exchange reads as a pair -->
-  <g class="ph p3">
+  <!-- point -->
+  <g>
     <rect x="508" y="168" width="86" height="64" fill="#070a0e" stroke="#f06e14" stroke-width="1.4"/>
     <text x="551" y="195" fill="#f06e14" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="12" text-anchor="middle">point</text>
     <text x="551" y="214" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="9" text-anchor="middle">hold</text>
   </g>
 
-  <!-- loop rally Ä point -->
-  <path class="loop" d="M448 164 C448 146 551 146 551 164" fill="none" stroke="#9aadb2" stroke-width="1.2"/>
-  <path class="loop" d="M551 236 C551 254 448 254 448 236" fill="none" stroke="#9aadb2" stroke-width="1.2"/>
-  <text class="ph p3" x="500" y="152" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="9" text-anchor="middle">exchange</text>
+  <!-- rally / point repeat until someone wins the game -->
+  <path d="M448 164 C448 146 551 146 551 164" fill="none" stroke="#9aadb2" stroke-width="1.2"/>
+  <path d="M551 236 C551 254 448 254 448 236" fill="none" stroke="#9aadb2" stroke-width="1.2"/>
+  <text x="500" y="152" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="9" text-anchor="middle">repeats</text>
 
   <!-- game -->
-  <g class="ph p4">
+  <g>
     <rect x="614" y="168" width="86" height="64" fill="#070a0e" stroke="#eef6f7" stroke-width="1.4"/>
     <text x="657" y="195" fill="#eef6f7" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="12" text-anchor="middle">game</text>
     <text x="657" y="214" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="9" text-anchor="middle">to 11</text>
   </g>
 
   <!-- match -->
-  <g class="ph p5">
+  <g>
     <rect x="720" y="168" width="86" height="64" fill="#070a0e" stroke="#eef6f7" stroke-width="1.4"/>
     <text x="763" y="195" fill="#eef6f7" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="12" text-anchor="middle">match</text>
     <text x="763" y="214" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="9" text-anchor="middle">best of 3</text>
   </g>
 
-  <g class="leg" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="11">
+  <g font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="11">
     <rect x="140" y="292" width="10" height="10" fill="#1ad9e8"/>
     <text x="158" y="301" fill="#eef6f7">you</text>
     <rect x="200" y="292" width="10" height="10" fill="#f06e14"/>
     <text x="218" y="301" fill="#eef6f7">AI</text>
     <rect x="256" y="292" width="10" height="10" fill="none" stroke="#9aadb2" stroke-dasharray="3 2"/>
-    <text x="274" y="301" fill="#9aadb2">queued</text>
-    <text x="810" y="301" fill="#9aadb2" text-anchor="end">CLICK OR SPACE advances</text>
+    <text x="274" y="301" fill="#9aadb2">waiting</text>
+    <text x="810" y="301" fill="#9aadb2" text-anchor="end">Space or click advances</text>
   </g>
 </svg>
