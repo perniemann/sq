@@ -17,7 +17,7 @@ description: Browser-only 3D squash game with WSF court dimensions and PARS-11 s
 ## Documentation
 
 - [How to play](https://github.com/perniemann/sq/blob/main/docs/HOW-TO-PLAY.md): keyboard, mouse, and touch controls; scoring
-- [README](https://github.com/perniemann/sq/blob/main/README.md): match briefing, then stack, scripts, deploy notes
+- [README](https://github.com/perniemann/sq/blob/main/README.md): match briefing, stack, scripts
 - [Changelog](https://github.com/perniemann/sq/blob/main/CHANGELOG.md): release history
 
 ## Assets

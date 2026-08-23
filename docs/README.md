@@ -7,7 +7,7 @@ Index and writing conventions for `docs/`.
 | Doc | Role |
 |-----|------|
 | [HOW-TO-PLAY.md](HOW-TO-PLAY.md) | Full controls and scoring |
-| [../README.md](../README.md) | Match briefing (loop, shot axes, returnability), then setup, scripts, versioning |
+| [../README.md](../README.md) | Match briefing (loop, shot axes, returnability), then scripts and versioning |
 | [../public/readme/](../public/readme/) | Claim plates for the README |
 | [../public/design-media/](../public/design-media/) | Journey stills (scene evidence) |
 
