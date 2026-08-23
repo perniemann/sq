@@ -298,6 +298,8 @@ export default function Ball({
     return () => {
       Reflect.deleteProperty(window, '__sqCapturePlaceBall')
     }
+    // rigidBodyRef identity is stable — register the capture hook once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
   }, [])
 
   // Shared BufferGeometry: skip R3F auto-dispose on either LineSegments, then dispose once.

@@ -10,7 +10,7 @@
  * stores immediately after mount, well inside that window — real GPU frames, not
  * software-rendered fallbacks.
  */
-import { mkdirSync } from 'node:fs'
+import { existsSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright'
@@ -20,6 +20,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(__dirname, '..')
 const OUT = join(ROOT, 'public', 'design-media')
 const ORIGIN = process.env.SQ_CAPTURE_ORIGIN ?? 'http://localhost:5173'
+
+const CHROME_EXECUTABLE =
+  process.env.SQ_CAPTURE_CHROME ??
+  (existsSync('/usr/bin/google-chrome') ? '/usr/bin/google-chrome' : undefined)
 
 const LAUNCH_ARGS = ['--use-gl=angle', '--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist']
 const VIEWPORT = { width: 1600, height: 1000 }
@@ -35,7 +39,7 @@ const PLACE_SERVE_BALL = `
   window.__sqCapturePlaceBall?.(2.4, 1.0, 1.745)
 `
 
-const withBigBall = (query: string): string =>
+const withBigBall = (query) =>
   query.includes('bigball') ? query : `${query}${query.includes('?') ? '&' : '?'}bigball`
 
 /** Store patches run inside the page. Keep in sync with stores/gameStore.ts + hooks/useInput.ts. */
@@ -290,8 +294,11 @@ async function runShot(browser, [name, query, patchKey, waitBefore, waitAfter, o
         await page.close()
         continue
       }
-      if (waitBefore) await page.waitForTimeout(Math.round(waitBefore * backoff))
       const patch = PATCHES[patchKey]
+      if (waitBefore) {
+        const prePatchWait = patch ? Math.min(waitBefore, 120) : waitBefore
+        await page.waitForTimeout(Math.round(prePatchWait * backoff))
+      }
       if (patch) {
         await page.evaluate(new Function(`return (async () => { ${patch} })()`))
       }
@@ -311,13 +318,13 @@ async function runShot(browser, [name, query, patchKey, waitBefore, waitAfter, o
         await page.close()
         continue
       }
-      const path = join(OUT, `${name}.png`)
-      await page.screenshot({ path, type: 'png' })
       if (crashed) {
         console.warn(`${name}: attempt ${attempt} context lost, retrying with a fresh page`)
         await page.close()
         continue
       }
+      const path = join(OUT, `${name}.png`)
+      await page.screenshot({ path, type: 'png' })
       if (options.verify && !(await options.verify(path))) {
         // A single fixed wait can land on a stale frame — e.g. re-entering `serving`
         // sometimes remounts the whole Canvas tree a second time, briefly resetting the
@@ -350,10 +357,20 @@ async function runShot(browser, [name, query, patchKey, waitBefore, waitAfter, o
   console.error(`${name}: gave up after ${attempts} attempts`)
 }
 
+function shotsToRun() {
+  const only = process.env.SQ_CAPTURE_ONLY?.split(',').map((s) => s.trim()).filter(Boolean)
+  if (!only?.length) return SHOTS
+  return SHOTS.filter(([name]) => only.includes(name))
+}
+
 async function main() {
   mkdirSync(OUT, { recursive: true })
-  const browser = await chromium.launch({ headless: true, args: LAUNCH_ARGS })
-  for (const shot of SHOTS) {
+  const browser = await chromium.launch({
+    headless: true,
+    args: LAUNCH_ARGS,
+    ...(CHROME_EXECUTABLE ? { executablePath: CHROME_EXECUTABLE } : {}),
+  })
+  for (const shot of shotsToRun()) {
     await runShot(browser, shot)
   }
   await browser.close()
