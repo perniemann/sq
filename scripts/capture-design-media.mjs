@@ -24,6 +24,20 @@ const ORIGIN = process.env.SQ_CAPTURE_ORIGIN ?? 'http://localhost:5173'
 const LAUNCH_ARGS = ['--use-gl=angle', '--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist']
 const VIEWPORT = { width: 1600, height: 1000 }
 
+/** Mid-rally pose for wide captures — centre lane, readable height, toward the front wall. */
+const PLACE_RALLY_BALL = `
+  await new Promise((r) => setTimeout(r, 80))
+  window.__sqCapturePlaceBall?.(0.2, 1.1, -0.8)
+`
+/** Right service box hold pose for serve stills. */
+const PLACE_SERVE_BALL = `
+  await new Promise((r) => setTimeout(r, 80))
+  window.__sqCapturePlaceBall?.(2.4, 1.0, 1.745)
+`
+
+const withBigBall = (query: string): string =>
+  query.includes('bigball') ? query : `${query}${query.includes('?') ? '&' : '?'}bigball`
+
 /** Store patches run inside the page. Keep in sync with stores/gameStore.ts + hooks/useInput.ts. */
 const PATCHES = {
   none: null,
@@ -36,6 +50,7 @@ const PATCHES = {
     s.setPhase('serving')
     s.setRallyState('serving')
     s.setCurrentStriker('player')
+    ${PLACE_SERVE_BALL}
   `,
   rally: `
     const { useGameStore } = await import('/src/stores/gameStore.ts')
@@ -46,6 +61,7 @@ const PATCHES = {
     s.setCanHit(true)
     s.setCurrentStriker('player')
     useGameStore.setState({ score: { player: 4, opponent: 3 } })
+    ${PLACE_RALLY_BALL}
   `,
   point: `
     const { useGameStore } = await import('/src/stores/gameStore.ts')
@@ -56,6 +72,7 @@ const PATCHES = {
     s.setCanHit(false)
     s.setPointResult('opponent', 'doubleBounce')
     useGameStore.setState({ score: { player: 6, opponent: 4 } })
+    ${PLACE_RALLY_BALL}
   `,
   tinFault: `
     const { useGameStore } = await import('/src/stores/gameStore.ts')
@@ -134,6 +151,7 @@ const PATCHES = {
     s.setRallyState('active')
     s.setCanHit(true)
     s.setCurrentStriker('player')
+    ${PLACE_RALLY_BALL}
   `,
   chaseOn: `
     const { useGameStore } = await import('/src/stores/gameStore.ts')
@@ -145,6 +163,7 @@ const PATCHES = {
     s.setCanHit(true)
     s.setCurrentStriker('player')
     useInputStore.setState({ buttonB: { pressed: true, pressStart: Date.now() - 150 } })
+    ${PLACE_RALLY_BALL}
   `,
   tinFlashOnly: `
     const { useGameStore } = await import('/src/stores/gameStore.ts')
@@ -205,16 +224,16 @@ const isOrangeish = ({ r, g, b }) => r > g + 15 && r > b + 30
 /** name, query string, patch key, ms before patch, ms after patch (before screenshot), options */
 const SHOTS = [
   ['capture-hero', '?nodemo', 'none', 650, 0],
-  ['capture-serving', '?nodemo', 'serving', 420, 150],
-  ['capture-rally', '?nodemo', 'rally', 420, 150],
-  ['capture-point', '?nodemo', 'point', 420, 150],
-  ['capture-tin', '?nodemo', 'tinFault', 420, 150],
+  ['capture-serving', withBigBall('?nodemo'), 'serving', 420, 150],
+  ['capture-rally', withBigBall('?nodemo'), 'rally', 420, 150],
+  ['capture-point', withBigBall('?nodemo'), 'point', 420, 150],
+  ['capture-tin', withBigBall('?nodemo'), 'tinFault', 420, 150],
   ['capture-game-over', '?nodemo', 'gameOver', 420, 150],
   ['capture-match-over', '?nodemo', 'matchOver', 420, 150],
   ['capture-charge-prep', '?nodemo&ball', 'chargePrep', 420, 120],
   ['capture-charge-power', '?nodemo&ball', 'chargePower', 420, 120],
-  ['capture-chase-off', '?nodemo', 'chaseOff', 420, 150],
-  ['capture-chase-on', '?nodemo', 'chaseOn', 420, 150],
+  ['capture-chase-off', withBigBall('?nodemo'), 'chaseOff', 420, 150],
+  ['capture-chase-on', withBigBall('?nodemo'), 'chaseOn', 420, 150],
   ['capture-tin-idle', '?nodemo&tin', 'none', 500, 0],
   ['capture-tin-flash', '?nodemo&tin', 'tinFlashOnly', 500, 100],
   // Reduced motion + a pixel check: the tint pulse is a multi-frame animation and this
@@ -230,7 +249,7 @@ const SHOTS = [
     attempts: 8,
     verify: async (path) => isCyanish(await averagePixel(path, BALL_HOTSPOT)),
   }],
-  ['capture-bloom-off', '?nodemo&nobloom', 'rally', 500, 200],
+  ['capture-bloom-off', withBigBall('?nodemo&nobloom'), 'rally', 500, 200],
 ]
 
 /**

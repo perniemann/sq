@@ -3,10 +3,6 @@
   <title>Returnability: the ball is dead until it touches the front wall. Side and back wall contact do not count. Once the front wall is hit, the ball tints in the striker's colour (WSF rule 6.2).</title>
   <desc>Contrast pair. Left: top-down court, ball on the side wall, court-line colour, no glow. Right: ball on the front wall, player cyan, a soft pulse because live is the signal.</desc>
   <defs>
-    <filter id="liveBall" x="-80%" y="-80%" width="260%" height="260%">
-      <feGaussianBlur stdDeviation="3.5" result="b"/>
-      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
     <style><![CDATA[
       /* Base: fully visible for img embed, reduced motion, and no-JS. */
       .ttl, .node { opacity: 1; transform: translateY(0); }
@@ -74,7 +70,7 @@
   <g class="node n1">
     <text x="40" y="100" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="11">SIDE WALL</text>
     <text x="109" y="128" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="8" text-anchor="middle">front</text>
-    <circle cx="46" cy="200" r="6" fill="#f2f4f5"/>
+    <circle cx="52" cy="200" r="8" fill="#f2f4f5" stroke="#9aadb2" stroke-width="1.2"/>
     <text x="40" y="348" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="11">still dead</text>
   </g>
 
@@ -82,9 +78,7 @@
   <g class="node n2">
     <text x="260" y="100" fill="#9aadb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="11">FRONT WALL</text>
     <text x="329" y="128" fill="#1ad9e8" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="8" text-anchor="middle">front</text>
-    <g class="alive">
-      <circle cx="329" cy="122" r="6" fill="#1ad9e8" filter="url(#liveBall)"/>
-    </g>
+    <circle class="alive" cx="329" cy="122" r="8" fill="#1ad9e8" stroke="#070a0e" stroke-width="1"/>
     <text x="260" y="348" fill="#1ad9e8" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="11">live, striker colour</text>
   </g>
 

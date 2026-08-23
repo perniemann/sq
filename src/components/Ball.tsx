@@ -60,6 +60,11 @@ const BALL_MASS = 0.024
 const BALL_COLOR = BALL_BASE_COLOR
 const BALL_MODEL_PATH = '/models/ball.glb'
 
+/** Wide-frame capture stills — ball reads as pixels at real scale; boost visual only. */
+const BIG_BALL_VIEW =
+  typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('bigball')
+const BALL_VISUAL_SCALE = BALL_MODEL_SCALE * (BIG_BALL_VIEW ? 6 : 1)
+
 /**
  * Suppresses the trail entirely rather than setting its length to 0, which would leave
  * drei allocating an empty point buffer. Read once at module scope, matching the HUD.
@@ -275,6 +280,25 @@ export default function Ball({
       outReported.current = false
     }
   }, [phase])
+
+  /** DEV capture harness — place the ball for wide-frame stills (`scripts/capture-design-media.mjs`). */
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+    const place = (x: number, y: number, z: number): void => {
+      const body = rigidBodyRef.current
+      if (!body) return
+      body.setTranslation({ x, y, z }, true)
+      body.setLinvel({ x: 0, y: 0, z: 0 }, true)
+      body.setAngvel({ x: 0, y: 0, z: 0 }, true)
+    }
+    Object.defineProperty(window, '__sqCapturePlaceBall', {
+      value: place,
+      configurable: true,
+    })
+    return () => {
+      Reflect.deleteProperty(window, '__sqCapturePlaceBall')
+    }
+  }, [])
 
   // Shared BufferGeometry: skip R3F auto-dispose on either LineSegments, then dispose once.
   useEffect(() => () => {
@@ -576,7 +600,7 @@ export default function Ball({
           restitution={bounceCoefficients().ball}
           friction={0.2}
         />
-        <primitive object={ballModel} scale={BALL_MODEL_SCALE} />
+        <primitive object={ballModel} scale={BALL_VISUAL_SCALE} />
       </RigidBody>
 
       <object3D ref={trailAnchorRef} />
