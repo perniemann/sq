@@ -6,15 +6,14 @@ export type JourneyMedia = {
   phase: string
   notice: string
   source: EvidenceSource
-  /** Still under public/design-media/, captured from the running build. */
+  /** Path under public/design-media/ — capture PNG or authored journey fixture SVG. */
   imageSrc: string
 }
 
 /**
- * Play-section evidence — real WebGL stills captured from the running dev build via
- * `node scripts/capture-design-media.mjs`, one per reachable phase. See that script's
- * header comment for the capture harness's WebGL context-loss constraint (this sandbox
- * only, not the shipped game).
+ * Play-section evidence — authored `journey-*.svg` fixtures where the ball must read at
+ * catalog scale (serve, rally, point, match-over); WebGL `capture-*.png` for the rest.
+ * Re-capture via `node scripts/capture-design-media.mjs` when harness or wide frames change.
  */
 export const JOURNEY_MEDIA: readonly JourneyMedia[] = [
   {
@@ -30,24 +29,24 @@ export const JOURNEY_MEDIA: readonly JourneyMedia[] = [
     title: 'Serving',
     phase: 'phase: serving',
     notice: 'Service box, cyan aim line, hold-to-charge prompt on the tin band.',
-    source: 'capture',
-    imageSrc: '/design-media/capture-serving.png',
+    source: 'fixture',
+    imageSrc: '/design-media/journey-serve.svg',
   },
   {
     id: 'rally',
     title: 'Rally',
     phase: 'phase: rally',
     notice: 'Live exchange. Score and turn marks stay diegetic on the front wall.',
-    source: 'capture',
-    imageSrc: '/design-media/capture-rally.png',
+    source: 'fixture',
+    imageSrc: '/design-media/journey-rally.svg',
   },
   {
     id: 'point',
     title: 'Point callout',
     phase: 'phase: point',
     notice: 'DOUBLE BOUNCE — centre callout in the losing side\u2019s colour.',
-    source: 'capture',
-    imageSrc: '/design-media/capture-point.png',
+    source: 'fixture',
+    imageSrc: '/design-media/journey-point.svg',
   },
   {
     id: 'tin',
@@ -70,8 +69,8 @@ export const JOURNEY_MEDIA: readonly JourneyMedia[] = [
     title: 'Match over',
     phase: 'phase: matchOver',
     notice: 'VICTORY in winner colour. Magenta is reserved for match point, not shown here.',
-    source: 'capture',
-    imageSrc: '/design-media/capture-match-over.png',
+    source: 'fixture',
+    imageSrc: '/design-media/journey-match-over.svg',
   },
 ] as const
 
