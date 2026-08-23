@@ -4,7 +4,7 @@ Claim diagrams for the repository README. Void-plated so ink stays legible on Gi
 
 | File | Claim |
 |------|--------|
-| [plate-match-rail.svg](plate-match-rail.svg) | `idle → serving → rally ⇄ point → game / match` |
+| [plate-phase-machine.svg](plate-phase-machine.svg) | `idle → serving → rally` then `point` / `gameOver` / `matchOver` (from `/design` PhaseDiagram) |
 | [plate-shot-axes.svg](plate-shot-axes.svg) | Hold is length; aim X is width; stick Y is attack plane |
 | [plate-returnability.svg](plate-returnability.svg) | `canHit` restores only after the front wall (WSF 6.2) |
 
