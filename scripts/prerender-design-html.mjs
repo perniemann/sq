@@ -131,11 +131,11 @@ function main() {
     <meta property="og:title" content="${TITLE}" />
     <meta property="og:description" content="${DESCRIPTION}" />
     <meta property="og:url" content="${CANONICAL}" />
-    <meta property="og:image" content="https://sq.perniemann.com/og-image.png" />
+    <meta property="og:image" content="https://sq.perniemann.com/og-image.png?v=2" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:image" content="https://sq.perniemann.com/og-image.png" />
+    <meta name="twitter:image" content="https://sq.perniemann.com/og-image.png?v=2" />
     <meta name="twitter:title" content="${TITLE}" />
     <meta name="twitter:description" content="${DESCRIPTION}" />
     <script type="application/ld+json">${jsonLd}</script>
