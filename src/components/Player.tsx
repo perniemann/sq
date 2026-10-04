@@ -15,7 +15,11 @@ import {
 } from '../systems/court'
 import { type MovementPhase, type ChargePhase, useGameStore } from '../stores/gameStore'
 import { T_POSITION } from '../systems/courtPositions'
-import { isAthleteHeldBetweenPoints } from '../systems/serveRules'
+import {
+  isAthleteHeldBetweenPoints,
+  serveBallWorldPosition,
+  serveStrikeDirection,
+} from '../systems/serveRules'
 import {
   CHARGE_MOVE_SPEED_SCALE,
   LOFT_NEUTRAL,
@@ -758,10 +762,11 @@ const _aimBeamDir = new THREE.Vector3()
 const _aimBeamTip = new THREE.Vector3()
 
 /**
- * Line from the racquet along the charge aim (180° front-wall cone + loft).
- * Same mapping as the floor needle — serve ballistics stay narrow, but the guide
- * must read the full stick so it does not look stuck on −Z.
- * Updated in useFrame so it tracks the kinematic racquet without React re-renders.
+ * Charge aim line. Rally draws the 180° cone from the racquet (`aimPreviewDirection`),
+ * including a downward kill. A serve draws `serveStrikeDirection` from the held ball —
+ * the same always-up launch the strike applies — so the line cannot dive into the floor.
+ * Length is the launch tangent, not the surface contact. The floor ring still carries
+ * the wide stick. Updated in useFrame so it tracks without React re-renders.
  */
 function ShotAimBeam({
   color,
@@ -790,13 +795,30 @@ function ShotAimBeam({
 
   useFrame(() => {
     const { aim, loft } = useInputStore.getState()
-    _aimBeamDir.copy(aimPreviewDirection(aim, loft))
+    const phase = useGameStore.getState().phase
+    let originX: number
+    let originY: number
+    let originZ: number
 
-    const origin = racquetPosRef.current
-    _aimBeamTip.copy(origin).addScaledVector(_aimBeamDir, SHOT_AIM_BEAM_LENGTH)
+    if (phase === 'serving') {
+      const box = useGameStore.getState().serviceBox
+      const pose = serveBallWorldPosition(box)
+      const strike = serveStrikeDirection(box, aim, loft)
+      _aimBeamDir.set(strike.x, strike.y, strike.z)
+      originX = pose.x
+      originY = pose.y
+      originZ = pose.z
+    } else {
+      _aimBeamDir.copy(aimPreviewDirection(aim, loft))
+      originX = racquetPosRef.current.x
+      originY = racquetPosRef.current.y
+      originZ = racquetPosRef.current.z
+    }
+
+    _aimBeamTip.set(originX, originY, originZ).addScaledVector(_aimBeamDir, SHOT_AIM_BEAM_LENGTH)
 
     const pos = lineObj.geometry.attributes.position as THREE.BufferAttribute
-    pos.setXYZ(0, origin.x, origin.y, origin.z)
+    pos.setXYZ(0, originX, originY, originZ)
     pos.setXYZ(1, _aimBeamTip.x, _aimBeamTip.y, _aimBeamTip.z)
     pos.needsUpdate = true
     lineObj.geometry.computeBoundingSphere()

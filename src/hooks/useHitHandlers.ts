@@ -13,12 +13,11 @@ import {
 import { aiRallyAim, calculateAIShot, shouldPlayDrop, type AIConfig } from '../systems/ai'
 import {
   serveHorizontalAngle,
-  serveHorizontalFromAim,
   serveLoft,
   serveLoftForOpponent,
-  serveLoftFromStick,
   serveSpeed,
   serveSpeedForOpponent,
+  serveStrikeDirection,
 } from '../systems/serveRules'
 import { aimToPlayerRotation } from '../systems/aimRotation'
 import { recordReceiveSample } from '../systems/receiveTelemetry'
@@ -158,11 +157,8 @@ export function useHitHandlers(params: UseHitHandlersParams): {
       if (phase === 'serving') {
         const currentBox = useGameStore.getState().serviceBox
         const { aim, loft } = useInputStore.getState()
-        direction = new THREE.Vector3(
-          serveHorizontalFromAim(currentBox, aim),
-          serveLoftFromStick(loft),
-          -1,
-        ).normalize()
+        const strike = serveStrikeDirection(currentBox, aim, loft)
+        direction = new THREE.Vector3(strike.x, strike.y, strike.z)
         speed = serveSpeed(power)
         shotDisplayName = `SERVE (${currentBox.toUpperCase()})`
       } else {

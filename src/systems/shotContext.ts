@@ -322,17 +322,19 @@ export function calculatePowerMultiplier(
 const UP = new THREE.Vector3(0, 1, 0)
 
 /**
- * Calculate complete shot result from context
+ * Calculate complete shot result from context.
+ *
+ * `shotType` locks the preview to a type that has already passed the charge-name
+ * debounce. Omit it and the type is chosen from the context, which is the strike path.
  */
-export function calculateShot(context: ShotContext): ShotResult {
-  // Select shot type based on context
-  const shotType = selectShotType(context)
+export function calculateShot(context: ShotContext, shotType?: ShotType): ShotResult {
+  const resolvedType = shotType ?? selectShotType(context)
 
   // Calculate angles
-  const angles = calculateShotAngles(shotType, context)
+  const angles = calculateShotAngles(resolvedType, context)
 
   // Calculate power
-  const powerMultiplier = calculatePowerMultiplier(shotType, context.chargePower)
+  const powerMultiplier = calculatePowerMultiplier(resolvedType, context.chargePower)
 
   // Local aim, yaw by facing, then rally fold (side-wall-first corridor at extremes).
   const direction = foldAimForRally(
@@ -343,10 +345,10 @@ export function calculateShot(context: ShotContext): ShotResult {
   )
 
   return {
-    type: shotType,
+    type: resolvedType,
     direction,
     powerMultiplier,
-    displayName: SHOT_DISPLAY_NAMES[shotType],
+    displayName: SHOT_DISPLAY_NAMES[resolvedType],
   }
 }
 

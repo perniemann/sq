@@ -178,6 +178,23 @@ export function serveHorizontalFromAim(box: ServiceBox, aim: number): number {
   return sign * magnitude
 }
 
+/**
+ * Unit launch the human serve strike applies.
+ * Lateral aim stays the narrow cross; loft is always upward (service-line clearance).
+ * Do not fold this through the rally cone.
+ */
+export function serveStrikeDirection(
+  box: ServiceBox,
+  aim: number,
+  loftStick: number,
+): { x: number, y: number, z: number } {
+  const x = serveHorizontalFromAim(box, aim)
+  const y = serveLoftFromStick(loftStick)
+  const z = -1
+  const len = Math.hypot(x, y, z)
+  return { x: x / len, y: y / len, z: z / len }
+}
+
 /** World pose of the held / just-struck serve ball for a box. */
 export function serveBallWorldPosition(box: ServiceBox): { x: number, y: number, z: number } {
   const boxPos = SERVICE_BOX_POSITIONS[box]

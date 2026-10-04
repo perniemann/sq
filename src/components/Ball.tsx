@@ -20,6 +20,7 @@ import {
   ballHitFlashMix,
 } from '../systems/ballHitFlash'
 import { isServeBallHeld, isBallFrozenBetweenPoints, serveBallWorldPosition } from '../systems/serveRules'
+import { BALL_LINEAR_DAMPING } from '../systems/predictedContact'
 import {
   PIXEL_SHARD_COUNT,
   PIXEL_SHARD_DRIFT_SPEED,
@@ -605,7 +606,7 @@ export default function Ball({
         name="ball"
         position={initialPosition}
         colliders={false}
-        linearDamping={0.4}
+        linearDamping={BALL_LINEAR_DAMPING}
         angularDamping={0.2}
         ccd
         onCollisionEnter={handleCollision}

@@ -6,6 +6,7 @@ import { KernelSize, ToneMappingMode } from 'postprocessing'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import Scene from './components/Scene'
 import { CAMERA_FOV, CAMERA_REST_POSITION } from './systems/cameraRig'
+import { GRAVITY_Y } from './systems/predictedContact'
 import HUD from './ui/HUD'
 import TouchControls from './ui/TouchControls'
 
@@ -25,7 +26,7 @@ export default function App(): React.ReactElement {
         camera={{ position: CAMERA_REST_POSITION, fov: CAMERA_FOV }}
         gl={{ antialias: true }}
       >
-        <Physics timeStep={1 / 60} gravity={[0, -9.81, 0]}>
+        <Physics timeStep={1 / 60} gravity={[0, GRAVITY_Y, 0]}>
           <Scene />
         </Physics>
         {/* Unlit MeshBasic on void — bloom makes white court edges and cyan/orange

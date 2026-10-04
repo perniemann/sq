@@ -101,4 +101,11 @@ export const COMPONENT_MANIFEST: readonly ComponentManifestEntry[] = [
     kind: 'excluded',
     reason: 'Dev orbit helper; gated by ?orbit.',
   },
+  {
+    file: 'components/SurfaceAimMarker.tsx',
+    sectionId: 'dr-system',
+    displayTitle: 'SurfaceAimMarker',
+    kind: 'excluded',
+    reason: 'Charge preview cross; needs the live ball, aim stick, and physics world.',
+  },
 ] as const

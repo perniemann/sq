@@ -23,7 +23,9 @@ import {
   serveLoftForOpponent,
   serveSpeed,
   serveSpeedForOpponent,
+  serveStrikeDirection,
 } from './serveRules'
+import { firstVerticalWallAlongRay } from './aimRotation'
 
 describe('judgeServeFrontWall', () => {
   const tin = COURT.tinHeight
@@ -119,6 +121,47 @@ describe('serveLoftFromStick / serveSpeed / serveHorizontalFromAim', () => {
 
   it('keeps lateral aim bounded so serves do not jam the far corner', () => {
     expect(SERVE_HORIZONTAL + SERVE_HORIZONTAL_AIM).toBeLessThanOrEqual(0.24)
+  })
+})
+
+describe('serveStrikeDirection', () => {
+  it('matches the normalized serve components and stays upward at loft 0', () => {
+    for (const box of ['left', 'right'] as const) {
+      for (const aim of [0, 0.5, 1]) {
+        for (const loft of [0, 0.5, 1]) {
+          const dir = serveStrikeDirection(box, aim, loft)
+          expect(Math.hypot(dir.x, dir.y, dir.z)).toBeCloseTo(1, 8)
+          expect(dir.y).toBeGreaterThan(0)
+          const x = serveHorizontalFromAim(box, aim)
+          const y = serveLoftFromStick(loft)
+          const n = Math.hypot(x, y, 1)
+          expect(dir.x).toBeCloseTo(x / n, 8)
+          expect(dir.y).toBeCloseTo(y / n, 8)
+          expect(dir.z).toBeCloseTo(-1 / n, 8)
+        }
+      }
+    }
+  })
+
+  it('raises y with loft and widens x with aim, keeping the box sign', () => {
+    const low = serveStrikeDirection('right', 0.5, 0)
+    const high = serveStrikeDirection('right', 0.5, 1)
+    expect(high.y).toBeGreaterThan(low.y)
+    const narrow = serveStrikeDirection('right', 0, 0.5)
+    const wide = serveStrikeDirection('right', 1, 0.5)
+    expect(Math.abs(wide.x)).toBeGreaterThan(Math.abs(narrow.x))
+    expect(wide.x).toBeLessThan(0)
+    expect(serveStrikeDirection('left', 1, 0.5).x).toBeGreaterThan(0)
+  })
+
+  it('meets the front wall first from the held ball at both aim ends', () => {
+    for (const box of ['left', 'right'] as const) {
+      for (const aim of [0, 1]) {
+        const pose = serveBallWorldPosition(box)
+        const dir = serveStrikeDirection(box, aim, 0.5)
+        expect(firstVerticalWallAlongRay(pose.x, pose.z, dir.x, dir.z)).toBe('front')
+      }
+    }
   })
 })
 

@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import Court from './Court'
 import Ball from './Ball'
 import Player from './Player'
+import SurfaceAimMarker from './SurfaceAimMarker'
 import WorldHud from './WorldHud'
 import GameCamera from './GameCamera'
 import { HEX } from '../theme/colors'
@@ -856,6 +857,8 @@ export default function Scene() {
         onTinHit={handleTinHit}
         onOutOfBounds={handleOutOfBounds}
       />
+
+      <SurfaceAimMarker ballRef={ballRef} playerPositionVec={playerPositionVec} />
       
       {/* Player (cyan) - controllable (or AI in demo mode), starts in service box */}
       <Player 
