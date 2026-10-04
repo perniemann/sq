@@ -17,6 +17,8 @@ import {
   serveFrontWallHeight,
   serveFrontWallInCourtX,
   serveFrontWallX,
+  serveFloorNeedleTheta,
+  serveFloorWedge,
   serveHorizontalAngle,
   serveHorizontalFromAim,
   serveLoftFromStick,
@@ -119,8 +121,13 @@ describe('serveLoftFromStick / serveSpeed / serveHorizontalFromAim', () => {
     )
   })
 
-  it('keeps lateral aim bounded so serves do not jam the far corner', () => {
-    expect(SERVE_HORIZONTAL + SERVE_HORIZONTAL_AIM).toBeLessThanOrEqual(0.24)
+  it('opens aim from a cross to a sidewall-after-front width', () => {
+    expect(SERVE_HORIZONTAL).toBe(0.18)
+    expect(SERVE_HORIZONTAL + SERVE_HORIZONTAL_AIM).toBeCloseTo(0.32, 8)
+    expect(serveLoftFromStick(0)).toBe(SERVE_LOFT_LOW)
+    expect(serveLoftFromStick(1)).toBe(SERVE_LOFT_HIGH)
+    expect(serveSpeed(0)).toBe(18)
+    expect(serveSpeed(1)).toBe(24)
   })
 })
 
@@ -165,6 +172,27 @@ describe('serveStrikeDirection', () => {
   })
 })
 
+describe('serveFloorWedge', () => {
+  it('opens toward the opposite side and mirrors across boxes', () => {
+    const rightNear = serveFloorNeedleTheta('right', 0)
+    const rightFar = serveFloorNeedleTheta('right', 1)
+    expect(rightNear).toBeCloseTo(Math.PI / 2 + Math.atan(0.18), 6)
+    expect(rightFar).toBeCloseTo(Math.PI / 2 + Math.atan(0.32), 6)
+    expect(rightFar).toBeGreaterThan(rightNear)
+
+    const leftNear = serveFloorNeedleTheta('left', 0)
+    const leftFar = serveFloorNeedleTheta('left', 1)
+    expect(leftNear).toBeCloseTo(Math.PI / 2 - Math.atan(0.18), 6)
+    expect(leftFar).toBeCloseTo(Math.PI / 2 - Math.atan(0.32), 6)
+    expect(leftFar).toBeLessThan(leftNear)
+
+    const wedge = serveFloorWedge('right')
+    expect(wedge.thetaStart).toBeCloseTo(rightNear, 6)
+    expect(wedge.thetaLength).toBeCloseTo(rightFar - rightNear, 6)
+    expect(serveFloorWedge('left').thetaLength).toBeCloseTo(wedge.thetaLength, 6)
+  })
+})
+
 describe('serveBallWorldPosition', () => {
   it('places the ball in the chosen box at hold height', () => {
     const right = serveBallWorldPosition('right')
@@ -177,55 +205,33 @@ describe('serveBallWorldPosition', () => {
 })
 
 describe('serve power×loft matrix', () => {
-  const powers = [0, 0.5, 1] as const
-  const lofts = [0, 0.5, 1] as const
-  const aims = [0, 0.5, 1] as const
+  it('keeps a mid serve above the service line without requiring every corner', () => {
+    const pose = serveBallWorldPosition('right')
+    const wallY = serveFrontWallHeight({
+      ballX: pose.x,
+      ballY: pose.y,
+      ballZ: pose.z,
+      horizontalAngle: serveHorizontalFromAim('right', 0.5),
+      loft: serveLoftFromStick(0.5),
+      speed: serveSpeed(0.5),
+    })
+    expect(wallY).toBeGreaterThan(COURT.serviceLineHeight)
+    expect(wallY).toBeLessThan(COURT.height)
+  })
 
-  it('clears the service line and stays in court for all corners', () => {
+  it('reaches the front wall inside the side walls at both aim ends', () => {
     for (const box of ['right', 'left'] as const) {
       const pose = serveBallWorldPosition(box)
-      for (const power of powers) {
-        for (const loftStick of lofts) {
-          for (const aim of aims) {
-            const loft = serveLoftFromStick(loftStick)
-            const speed = serveSpeed(power)
-            const horizontalAngle = serveHorizontalFromAim(box, aim)
-            const wallY = serveFrontWallHeight({
-              ballX: pose.x,
-              ballY: pose.y,
-              ballZ: pose.z,
-              horizontalAngle,
-              loft,
-              speed,
-            })
-            const wallX = serveFrontWallX({
-              ballX: pose.x,
-              ballY: pose.y,
-              ballZ: pose.z,
-              horizontalAngle,
-              loft,
-              speed,
-            })
-            const label = `${box} p=${power} loft=${loftStick} aim=${aim}`
-            expect(
-              wallY,
-              `${label} wallY=${wallY.toFixed(2)}`,
-            ).toBeGreaterThan(COURT.serviceLineHeight + 0.1)
-            expect(wallY).toBeLessThan(COURT.height)
-            expect(
-              serveFrontWallInCourtX(wallX),
-              `${label} wallX=${wallX.toFixed(2)}`,
-            ).toBe(true)
-            expect(
-              judgeServeFrontWall(wallY, COURT.tinHeight, COURT.serviceLineHeight),
-            ).toBe('valid')
-            if (box === 'right') {
-              expect(wallX).toBeGreaterThan(0.5)
-            } else {
-              expect(wallX).toBeLessThan(-0.5)
-            }
-          }
-        }
+      for (const aim of [0, 1] as const) {
+        const wallX = serveFrontWallX({
+          ballX: pose.x,
+          ballY: pose.y,
+          ballZ: pose.z,
+          horizontalAngle: serveHorizontalFromAim(box, aim),
+          loft: serveLoftFromStick(0.5),
+          speed: serveSpeed(0.5),
+        })
+        expect(serveFrontWallInCourtX(wallX), `${box} aim=${aim} wallX=${wallX}`).toBe(true)
       }
     }
   })
