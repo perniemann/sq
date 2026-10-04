@@ -35,13 +35,16 @@ export const SERVE_LOFT_HIGH = 0.62
 export const SERVE_LOFT_MIN = SERVE_LOFT_LOW
 
 /**
- * Lateral pre-normalise |X| at aim 0 (modest opposite-quarter bias).
- * Sign is chosen per box so the serve crosses into the opposite quarter (WSF 5.7.4).
+ * Lateral pre-normalise |X| at aim 0. About 10° off straight, toward the opposite
+ * quarter (WSF 5.7.4). Sign is chosen per box. The first wall is still the front wall.
  */
-export const SERVE_HORIZONTAL = 0.12
+export const SERVE_HORIZONTAL = 0.18
 
-/** Extra |X| at full aim — still clamped in-court by vacuum tests. */
-export const SERVE_HORIZONTAL_AIM = 0.1
+/**
+ * Extra |X| at full aim. Aim 1 is 0.32, about 18°: wide enough to meet a side wall
+ * after the front wall. A side wall before the front wall is still a fault.
+ */
+export const SERVE_HORIZONTAL_AIM = 0.14
 
 /**
  * Held serve height (m). While `phase === 'serving'`, the ball is pinned to the full
@@ -169,13 +172,33 @@ export function serveHorizontalAngle(box: ServiceBox): number {
 }
 
 /**
- * Box bias plus player aim (0–1). Higher aim widens the cross toward the opposite
- * side; vacuum tests keep front-wall X in court and on the correct half.
+ * Box bias plus player aim (0–1). Higher aim widens the cross. Aim 1 can meet a
+ * side wall after the front wall. The first wall stays the front wall.
  */
 export function serveHorizontalFromAim(box: ServiceBox, aim: number): number {
   const sign = box === 'right' ? -1 : 1
   const magnitude = SERVE_HORIZONTAL + clamp01(aim) * SERVE_HORIZONTAL_AIM
   return sign * magnitude
+}
+
+/**
+ * Floor-ring angle for a serve aim. Straight at the front wall is π/2.
+ * The right box opens toward court left (+θ); the left box mirrors it.
+ */
+export function serveFloorNeedleTheta(box: ServiceBox, aim: number): number {
+  const magnitude = SERVE_HORIZONTAL + clamp01(aim) * SERVE_HORIZONTAL_AIM
+  const offset = Math.atan(magnitude)
+  return box === 'right' ? Math.PI / 2 + offset : Math.PI / 2 - offset
+}
+
+/** The serve aim arc. Rally charges keep the 180° cone. */
+export function serveFloorWedge(box: ServiceBox): { thetaStart: number, thetaLength: number } {
+  const near = serveFloorNeedleTheta(box, 0)
+  const far = serveFloorNeedleTheta(box, 1)
+  return {
+    thetaStart: Math.min(near, far),
+    thetaLength: Math.abs(far - near),
+  }
 }
 
 /**

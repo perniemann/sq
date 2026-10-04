@@ -18,7 +18,10 @@ import { T_POSITION } from '../systems/courtPositions'
 import {
   isAthleteHeldBetweenPoints,
   serveBallWorldPosition,
+  serveFloorNeedleTheta,
+  serveFloorWedge,
   serveStrikeDirection,
+  type ServiceBox,
 } from '../systems/serveRules'
 import {
   CHARGE_MOVE_SPEED_SCALE,
@@ -329,6 +332,9 @@ export default function Player({
   
   const aim = useAim()
   const loft = useLoft()
+  const phase = useGameStore(state => state.phase)
+  const serviceBox = useGameStore(state => state.serviceBox)
+  const serveBox: ServiceBox | null = phase === 'serving' ? serviceBox : null
   // Bumped by resetBallForServe — must snap even when controllable free movement owns pose.
   const serveResetCount = useGameStore(state => state.serveResetCount)
   const appliedServeResetRef = useRef(serveResetCount)
@@ -695,6 +701,7 @@ export default function Player({
             power={chargeLevel}
             loft={isControllable ? loft : LOFT_NEUTRAL}
             color={color}
+            serveBox={serveBox}
           />
         )}
 
@@ -844,33 +851,40 @@ function ShotAimBeam({
 }
 
 /**
- * Aim cone + length ring during charge. Outer arc = 180° toward the front wall only
- * (not a full circle); radial needle = left/right aim; inner ring fill = shot length
- * (charge). Left loft rail always on during charge (mid tick = neutral height).
- * Soft LOB / STRAIGHT / SMASH / BOAST labels are hints only — no snap.
+ * Aim cone + length ring during charge. A rally draws 180° toward the front wall.
+ * A serve draws only the cross-court wedge. Radial needle = left/right aim; inner
+ * ring fill = shot length. Left loft rail stays on (mid tick = neutral height).
+ * Soft LOB / STRAIGHT / SMASH / BOAST labels are hints only — no snap. Boast and
+ * straight hide during a serve.
  */
 function ChargeIndicator({
   aim,
   power,
   loft,
   color,
+  serveBox,
 }: {
   aim: number
   power: number
   loft: number
   color: string
+  /** Set while serving. The ring then draws the serve wedge instead of the 180° cone. */
+  serveBox: ServiceBox | null
 }) {
-  const fullArcLength = AIM_ARC_RANGE
   const quantisedAim = Math.round(aim * CHARGE_ARC_STEPS) / CHARGE_ARC_STEPS
   const quantisedPower = Math.round(power * CHARGE_ARC_STEPS) / CHARGE_ARC_STEPS
   const quantisedLoft = Math.round(loft * CHARGE_ARC_STEPS) / CHARGE_ARC_STEPS
+  const wedge = serveBox ? serveFloorWedge(serveBox) : null
+  const fullArcLength = wedge ? wedge.thetaLength : AIM_ARC_RANGE
   const powerArcLength = Math.max(fullArcLength * quantisedPower, 0.001)
-  // Floor ring: θ=0 right → θ=π/2 front → θ=π left (front semicircle only).
-  const coneStart = 0
+  // Floor ring: θ=0 right → θ=π/2 front → θ=π left. A serve uses only its wedge.
+  const coneStart = wedge ? wedge.thetaStart : 0
   const needleLength = aimOuterNeedleLength()
-  const needle = floorNeedlePose(quantisedAim, needleLength)
+  const needle = serveBox
+    ? needleOnTheta(serveFloorNeedleTheta(serveBox, quantisedAim), needleLength)
+    : floorNeedlePose(quantisedAim, needleLength)
   // Length fills left → right along the same cone.
-  const powerStart = Math.PI - powerArcLength
+  const powerStart = wedge ? coneStart : Math.PI - powerArcLength
 
   const aimInner = PLAYER_SIZE * 1.6
   const aimOuter = PLAYER_SIZE * 2.0
@@ -902,7 +916,7 @@ function ChargeIndicator({
       </mesh>
 
       {/* Arc end caps — make the 180° limit readable vs a full ring. */}
-      {[0, Math.PI].map((theta) => (
+      {[coneStart, coneStart + fullArcLength].map((theta) => (
         <mesh
           key={theta}
           position={[Math.cos(theta) * ((aimInner + aimOuter) * 0.5), Math.sin(theta) * ((aimInner + aimOuter) * 0.5), 0.001]}
@@ -943,7 +957,9 @@ function ChargeIndicator({
 
       {/* Length-band ticks: tap / drive / full length */}
       {POWER_BAND_LEVELS.map((level) => {
-        const theta = aimToFloorNeedleTheta(level)
+        const theta = wedge
+          ? coneStart + level * fullArcLength
+          : aimToFloorNeedleTheta(level)
         const midR = (powerInner + powerOuter) * 0.5
         return (
           <mesh
@@ -1030,6 +1046,9 @@ function ChargeIndicator({
 
       {/* Sector hints — continuous aim; active stick sector brightens, never snaps. */}
       {sectorHints.map((hint) => {
+        if (serveBox && (hint.key === 'boastLeft' || hint.key === 'boastRight' || hint.key === 'straight')) {
+          return null
+        }
         const active = activeHints[hint.key]
         return (
           <Text
@@ -1063,6 +1082,15 @@ function ChargeIndicator({
       </mesh>
     </group>
   )
+}
+
+function needleOnTheta(theta: number, length: number): { x: number, y: number, theta: number } {
+  const half = length * 0.5
+  return {
+    x: Math.cos(theta) * half,
+    y: Math.sin(theta) * half,
+    theta,
+  }
 }
 
 function aimOuterNeedleLength(): number {
