@@ -11,6 +11,7 @@
  */
 
 import * as THREE from 'three'
+import { BALL_LINEAR_DAMPING, GRAVITY_Y } from '../config'
 import { BALL_RADIUS, COURT, FRONT_WALL_Z, getOutLineHeight } from './court'
 import { aimToPlayerRotation } from './aimRotation'
 import {
@@ -27,12 +28,6 @@ import {
   serveStrikeDirection,
   type ServiceBox,
 } from './serveRules'
-
-/** Matches `RigidBody linearDamping` on the ball. */
-export const BALL_LINEAR_DAMPING = 0.4
-
-/** Matches the Rapier world gravity Y component. */
-export const GRAVITY_Y = -9.81
 
 const MIN_HIT_TIME = 1e-4
 const FLOOR_SEARCH_CAP_S = 12
@@ -134,27 +129,16 @@ function timeToFloor(y0: number, vy0: number): number | null {
   return hi
 }
 
-interface HitCandidate {
-  t: number
-  surface: CourtSurface
-  x: number
-  y: number
-  z: number
-}
+const WALL_PLANES: readonly { surface: CourtSurface, axis: 'x' | 'z', plane: number }[] = [
+  { surface: 'front', axis: 'z', plane: FRONT_WALL_Z + BALL_RADIUS },
+  { surface: 'back', axis: 'z', plane: COURT.length / 2 - BALL_RADIUS },
+  { surface: 'left', axis: 'x', plane: -COURT.width / 2 + BALL_RADIUS },
+  { surface: 'right', axis: 'x', plane: COURT.width / 2 - BALL_RADIUS },
+]
 
-function positionAt(
-  origin: BallisticLaunch['origin'],
-  vx: number,
-  vy: number,
-  vz: number,
-  t: number,
-): { x: number, y: number, z: number } {
-  return {
-    x: axisAt(origin.x, vx, 0, t),
-    y: axisAt(origin.y, vy, GRAVITY_Y, t),
-    z: axisAt(origin.z, vz, 0, t),
-  }
-}
+/** Reused by the charge preview. Must not escape `fillPreviewLaunch`. */
+const _playerScratch = new THREE.Vector3()
+const _ballScratch = new THREE.Vector3()
 
 function acceptWall(
   surface: CourtSurface,
@@ -215,54 +199,49 @@ export function predictSurfaceContact(launch: BallisticLaunch, out: SurfaceConta
   const vz = launch.direction.z * launch.speed
   const { origin } = launch
 
-  const frontZ = FRONT_WALL_Z + BALL_RADIUS
-  const backZ = COURT.length / 2 - BALL_RADIUS
-  const leftX = -COURT.width / 2 + BALL_RADIUS
-  const rightX = COURT.width / 2 - BALL_RADIUS
+  let bestT = Infinity
+  let bestSurface: CourtSurface = 'front'
+  let bestX = 0
+  let bestY = 0
+  let bestZ = 0
 
-  let best: HitCandidate | null = null
-  const consider = (candidate: HitCandidate | null): void => {
-    if (!candidate) return
-    if (!best || candidate.t < best.t) best = candidate
+  for (let i = 0; i < WALL_PLANES.length; i++) {
+    const wall = WALL_PLANES[i]
+    const t = wall.axis === 'z'
+      ? timeToDampedPlane(origin.z, vz, wall.plane)
+      : timeToDampedPlane(origin.x, vx, wall.plane)
+    if (t === null || t >= bestT) continue
+    const x = axisAt(origin.x, vx, 0, t)
+    const y = axisAt(origin.y, vy, GRAVITY_Y, t)
+    const z = axisAt(origin.z, vz, 0, t)
+    if (!acceptWall(wall.surface, x, y, z)) continue
+    bestT = t
+    bestSurface = wall.surface
+    bestX = x
+    bestY = y
+    bestZ = z
   }
-
-  const wallAt = (
-    surface: CourtSurface,
-    t: number | null,
-  ): HitCandidate | null => {
-    if (t === null) return null
-    const pos = positionAt(origin, vx, vy, vz, t)
-    if (!acceptWall(surface, pos.x, pos.y, pos.z)) return null
-    return { t, surface, x: pos.x, y: pos.y, z: pos.z }
-  }
-
-  consider(wallAt('front', timeToDampedPlane(origin.z, vz, frontZ)))
-  consider(wallAt('back', timeToDampedPlane(origin.z, vz, backZ)))
-  consider(wallAt('left', timeToDampedPlane(origin.x, vx, leftX)))
-  consider(wallAt('right', timeToDampedPlane(origin.x, vx, rightX)))
 
   const floorT = timeToFloor(origin.y, vy)
-  if (floorT !== null) {
-    const pos = positionAt(origin, vx, vy, vz, floorT)
-    if (acceptFloor(pos.x, pos.z)) {
-      consider({
-        t: floorT,
-        surface: 'floor',
-        x: pos.x,
-        y: BALL_RADIUS,
-        z: pos.z,
-      })
+  if (floorT !== null && floorT < bestT) {
+    const x = axisAt(origin.x, vx, 0, floorT)
+    const z = axisAt(origin.z, vz, 0, floorT)
+    if (acceptFloor(x, z)) {
+      bestT = floorT
+      bestSurface = 'floor'
+      bestX = x
+      bestY = BALL_RADIUS
+      bestZ = z
     }
   }
 
-  if (!best) return false
-  const hit: HitCandidate = best
-  out.surface = hit.surface
-  out.x = hit.x
-  out.y = hit.y
-  out.z = hit.z
-  out.time = hit.t
-  out.kind = contactKind(hit.surface, hit.y, launch.serve)
+  if (bestT === Infinity) return false
+  out.surface = bestSurface
+  out.x = bestX
+  out.y = bestY
+  out.z = bestZ
+  out.time = bestT
+  out.kind = contactKind(bestSurface, bestY, launch.serve)
   return true
 }
 
@@ -287,12 +266,12 @@ export function fillPreviewLaunch(input: PreviewLaunchInput, out: BallisticLaunc
 
   if (!input.shotType) return false
 
-  const player = new THREE.Vector3(
+  const player = _playerScratch.set(
     input.playerPosition.x,
     input.playerPosition.y,
     input.playerPosition.z,
   )
-  const ball = new THREE.Vector3(
+  const ball = _ballScratch.set(
     input.ballPosition.x,
     input.ballPosition.y,
     input.ballPosition.z,

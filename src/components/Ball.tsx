@@ -12,7 +12,7 @@ import {
   BALL_MODEL_SCALE,
   GLB_ACCENT_MATERIAL,
 } from '../systems/court'
-import { bounceCoefficients, displayAlpha } from '../config'
+import { BALL_LINEAR_DAMPING, bounceCoefficients, displayAlpha } from '../config'
 import { HEX } from '../theme/colors'
 import {
   BALL_BASE_COLOR,
@@ -20,7 +20,6 @@ import {
   ballHitFlashMix,
 } from '../systems/ballHitFlash'
 import { isServeBallHeld, isBallFrozenBetweenPoints, serveBallWorldPosition } from '../systems/serveRules'
-import { BALL_LINEAR_DAMPING } from '../systems/predictedContact'
 import {
   PIXEL_SHARD_COUNT,
   PIXEL_SHARD_DRIFT_SPEED,

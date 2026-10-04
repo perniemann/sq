@@ -14,6 +14,12 @@ export const BOUNCE_PROFILES = {
 
 export type BounceProfileName = keyof typeof BOUNCE_PROFILES
 
+/** Rapier linear damping on the ball. The aim predictor uses the same value. */
+export const BALL_LINEAR_DAMPING = 0.4
+
+/** World gravity Y. The aim predictor uses the same value. */
+export const GRAVITY_Y = -9.81
+
 /** Default bounce feel. Override at runtime with `?bounce=arcade` or `?bounce=realistic`. */
 export const BOUNCE_PROFILE: BounceProfileName = 'realistic'
 

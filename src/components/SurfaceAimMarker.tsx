@@ -13,6 +13,8 @@ import {
   type SurfaceContact,
 } from '../systems/predictedContact'
 import { COURT } from '../systems/court'
+import type { ServiceBox } from '../systems/serveRules'
+import type { ShotType } from '../systems/shotContext'
 import { useGameStore } from '../stores/gameStore'
 import { HEX } from '../theme/colors'
 
@@ -106,6 +108,22 @@ export default function SurfaceAimMarker({
     time: 0,
     kind: 'play',
   })
+  const serveInputRef = useRef({
+    kind: 'serve' as const,
+    serviceBox: 'right' as ServiceBox,
+    aim: 0,
+    loft: 0,
+    power: 0,
+  })
+  const rallyInputRef = useRef({
+    kind: 'rally' as const,
+    playerPosition: { x: 0, y: 0, z: 0 },
+    ballPosition: { x: 0, y: 0, z: 0 },
+    aim: 0,
+    loft: 0,
+    power: 0,
+    shotType: null as ShotType | null,
+  })
 
   useFrame(() => {
     const mesh = meshRef.current
@@ -131,13 +149,12 @@ export default function SurfaceAimMarker({
     let filled = false
 
     if (store.phase === 'serving') {
-      filled = fillPreviewLaunch({
-        kind: 'serve',
-        serviceBox: store.serviceBox,
-        aim: input.aim,
-        loft: input.loft,
-        power,
-      }, launch)
+      const serveInput = serveInputRef.current
+      serveInput.serviceBox = store.serviceBox
+      serveInput.aim = input.aim
+      serveInput.loft = input.loft
+      serveInput.power = power
+      filled = fillPreviewLaunch(serveInput, launch)
     } else {
       const body = ballRef.current
       if (!body) {
@@ -154,15 +171,18 @@ export default function SurfaceAimMarker({
         mesh.visible = false
         return
       }
-      filled = fillPreviewLaunch({
-        kind: 'rally',
-        playerPosition: player,
-        ballPosition: ball,
-        aim: input.aim,
-        loft: input.loft,
-        power,
-        shotType: store.currentShotType,
-      }, launch)
+      const rallyInput = rallyInputRef.current
+      rallyInput.playerPosition.x = player.x
+      rallyInput.playerPosition.y = player.y
+      rallyInput.playerPosition.z = player.z
+      rallyInput.ballPosition.x = ball.x
+      rallyInput.ballPosition.y = ball.y
+      rallyInput.ballPosition.z = ball.z
+      rallyInput.aim = input.aim
+      rallyInput.loft = input.loft
+      rallyInput.power = power
+      rallyInput.shotType = store.currentShotType
+      filled = fillPreviewLaunch(rallyInput, launch)
     }
 
     if (!filled || !predictSurfaceContact(launch, contact)) {

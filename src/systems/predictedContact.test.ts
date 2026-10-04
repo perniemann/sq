@@ -1,10 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import * as THREE from 'three'
+import { BALL_LINEAR_DAMPING, GRAVITY_Y } from '../config'
 import { BALL_RADIUS, COURT, FRONT_WALL_Z } from './court'
 import { aimToPlayerRotation } from './aimRotation'
 import {
-  BALL_LINEAR_DAMPING,
-  GRAVITY_Y,
   fillPreviewLaunch,
   predictSurfaceContact,
   timeToDampedPlane,
