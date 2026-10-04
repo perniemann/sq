@@ -53,6 +53,25 @@ describe('calculateShot aim vs power', () => {
     expect(shot.direction.x).not.toBeCloseTo(0, 1)
   })
 
+  it('writes the same unit direction into directionOut on repeat', () => {
+    const context = baseContext({ playerRotation: 0.2, chargePower: 0.4, loft: 0.7 })
+    const fresh = calculateShot(context, 'drive')
+    const out = new THREE.Vector3(9, 9, 9)
+    const written = calculateShot(context, 'drive', out)
+
+    expect(written.direction).toBe(out)
+    expect(out.x).toBeCloseTo(fresh.direction.x, 8)
+    expect(out.y).toBeCloseTo(fresh.direction.y, 8)
+    expect(out.z).toBeCloseTo(fresh.direction.z, 8)
+    expect(out.length()).toBeCloseTo(1, 5)
+
+    const keptX = fresh.direction.x
+    out.set(3, 3, 3)
+    calculateShot(context, 'drive', out)
+    expect(out.x).toBeCloseTo(keptX, 8)
+    expect(fresh.direction.x).toBeCloseTo(keptX, 8)
+  })
+
   it('yaws a front-wall drive about Y', () => {
     const straight = calculateShot(baseContext({ playerRotation: 0 }))
     const yaw = Math.PI / 12

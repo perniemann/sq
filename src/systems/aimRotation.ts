@@ -80,12 +80,16 @@ export function minForwardZForDirection(
  *   the *opposing* front corner rather than back into the gallery.
  * - Rally mode: strong lateral aims keep a small −Z so the first wall can be a side wall.
  * - Front-only mode: always pull to `MIN_FORWARD_Z_CENTRE` (drives / AI-safe previews).
+ *
+ * Pass `out` to write into a reused vector. Omit it and the input is left unchanged.
  */
 export function foldAimForRally(
   direction: THREE.Vector3,
   mode: 'rally' | 'frontOnly' = 'rally',
+  out?: THREE.Vector3,
 ): THREE.Vector3 {
-  const dir = direction.clone()
+  const dir = out ?? direction.clone()
+  if (out !== undefined && out !== direction) dir.copy(direction)
   if (dir.z > 0) {
     const lateral = dir.x === 0 ? 1 : dir.x
     const floor = mode === 'frontOnly' ? MIN_FORWARD_Z_CENTRE : MIN_FORWARD_Z_EDGE

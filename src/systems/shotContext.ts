@@ -320,14 +320,23 @@ export function calculatePowerMultiplier(
 // ============================================================================
 
 const UP = new THREE.Vector3(0, 1, 0)
+/** Pre-fold aim. Reused so the charge preview can avoid a direction allocation. */
+const _shotLocal = new THREE.Vector3()
 
 /**
  * Calculate complete shot result from context.
  *
  * `shotType` locks the preview to a type that has already passed the charge-name
  * debounce. Omit it and the type is chosen from the context, which is the strike path.
+ *
+ * `directionOut`, when passed, receives the unit direction and is the object returned
+ * on `direction`. Omit it and the strike path gets a fresh vector.
  */
-export function calculateShot(context: ShotContext, shotType?: ShotType): ShotResult {
+export function calculateShot(
+  context: ShotContext,
+  shotType?: ShotType,
+  directionOut?: THREE.Vector3,
+): ShotResult {
   const resolvedType = shotType ?? selectShotType(context)
 
   // Calculate angles
@@ -337,12 +346,13 @@ export function calculateShot(context: ShotContext, shotType?: ShotType): ShotRe
   const powerMultiplier = calculatePowerMultiplier(resolvedType, context.chargePower)
 
   // Local aim, yaw by facing, then rally fold (side-wall-first corridor at extremes).
-  const direction = foldAimForRally(
-    new THREE.Vector3(angles.horizontal, angles.vertical, -1)
-      .normalize()
-      .applyAxisAngle(UP, context.playerRotation),
-    'rally',
-  )
+  const local = _shotLocal
+    .set(angles.horizontal, angles.vertical, -1)
+    .normalize()
+    .applyAxisAngle(UP, context.playerRotation)
+  const direction = directionOut
+    ? foldAimForRally(local, 'rally', directionOut)
+    : foldAimForRally(local, 'rally')
 
   return {
     type: resolvedType,

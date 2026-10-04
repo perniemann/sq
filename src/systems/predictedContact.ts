@@ -17,7 +17,6 @@ import { aimToPlayerRotation } from './aimRotation'
 import {
   analyzeShotContext,
   calculateShot,
-  calculateVelocityFromShot,
   type ShotType,
 } from './shotContext'
 import { BASE_SHOT_SPEED } from './shotTypes'
@@ -139,6 +138,7 @@ const WALL_PLANES: readonly { surface: CourtSurface, axis: 'x' | 'z', plane: num
 /** Reused by the charge preview. Must not escape `fillPreviewLaunch`. */
 const _playerScratch = new THREE.Vector3()
 const _ballScratch = new THREE.Vector3()
+const _dirScratch = new THREE.Vector3()
 
 function acceptWall(
   surface: CourtSurface,
@@ -284,15 +284,14 @@ export function fillPreviewLaunch(input: PreviewLaunchInput, out: BallisticLaunc
     1,
     input.loft,
   )
-  const shot = calculateShot(context, input.shotType)
-  const velocity = calculateVelocityFromShot(shot, BASE_SHOT_SPEED)
+  const shot = calculateShot(context, input.shotType, _dirScratch)
   out.origin.x = ball.x
   out.origin.y = ball.y
   out.origin.z = ball.z
-  out.direction.x = velocity.direction.x
-  out.direction.y = velocity.direction.y
-  out.direction.z = velocity.direction.z
-  out.speed = velocity.speed
+  out.direction.x = _dirScratch.x
+  out.direction.y = _dirScratch.y
+  out.direction.z = _dirScratch.z
+  out.speed = BASE_SHOT_SPEED * shot.powerMultiplier
   out.serve = false
   return true
 }
