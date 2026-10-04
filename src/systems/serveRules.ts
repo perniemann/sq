@@ -186,8 +186,7 @@ export function serveHorizontalFromAim(box: ServiceBox, aim: number): number {
  * The right box opens toward court left (+θ); the left box mirrors it.
  */
 export function serveFloorNeedleTheta(box: ServiceBox, aim: number): number {
-  const magnitude = SERVE_HORIZONTAL + clamp01(aim) * SERVE_HORIZONTAL_AIM
-  const offset = Math.atan(magnitude)
+  const offset = Math.atan(Math.abs(serveHorizontalFromAim(box, aim)))
   return box === 'right' ? Math.PI / 2 + offset : Math.PI / 2 - offset
 }
 
@@ -203,7 +202,7 @@ export function serveFloorWedge(box: ServiceBox): { thetaStart: number, thetaLen
 
 /**
  * Unit launch the human serve strike applies.
- * Lateral aim stays the narrow cross; loft is always upward (service-line clearance).
+ * Lateral aim is the cross from serveHorizontalFromAim; loft is always upward.
  * Do not fold this through the rally cone.
  */
 export function serveStrikeDirection(
