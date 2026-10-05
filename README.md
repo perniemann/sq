@@ -4,7 +4,7 @@
 
 <p align="center">
 <!-- x-release-please-start-version -->
-<strong>Version:</strong> 0.1.7
+<strong>Version:</strong> 0.1.8
 <!-- x-release-please-end -->
 </p>
 

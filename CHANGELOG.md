@@ -5,6 +5,13 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.8](https://github.com/perniemann/sq/compare/v0.1.7...v0.1.8) (2026-10-05)
+
+
+### Bug Fixes
+
+* catch the front-wall version up to the shipped game ([f7cb99f](https://github.com/perniemann/sq/commit/f7cb99f89f12e2dd3f957a1d1ad1ae05e87ff789))
+
 ## [0.1.7](https://github.com/perniemann/sq/compare/v0.1.6...v0.1.7) (2026-08-23)
 
 
