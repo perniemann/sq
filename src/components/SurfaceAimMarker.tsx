@@ -19,20 +19,18 @@ import type { ServiceBox } from '../systems/serveRules'
 import type { ShotType } from '../systems/shotContext'
 import { useGameStore } from '../stores/gameStore'
 import { HEX } from '../theme/colors'
-import { createSquareGridGeometry, GRID_DIVISIONS } from './squareGrid'
+import {
+  createSquareGridGeometry,
+  GRID_DIVISIONS,
+  MARKER_GROWTH_PER_METRE,
+  MARKER_MIN_SCALE,
+  MARKER_Y,
+  PULSE_WALL_SCALE,
+  SURFACE_INSET,
+} from './squareGrid'
 
 /** Samples along the flight, plus one vertex on the contact grid. */
 const ARC_SEGMENTS = 16
-
-/**
- * Contact grid matches the live ball marker: wall size is the impact pulse,
- * floor size is the same height formula. Insets match that marker too.
- */
-const AIM_WALL_SCALE = 0.2
-const AIM_FLOOR_MIN_SCALE = 0.1
-const AIM_FLOOR_GROWTH_PER_METRE = 0.07
-const AIM_FLOOR_Y = 0.008
-const AIM_SURFACE_INSET = 0.012
 
 const _arcPoint: BallisticPoint = { x: 0, y: 0, z: 0 }
 
@@ -45,28 +43,28 @@ function placeAimGrid(
   const halfW = COURT.width / 2
   const halfL = COURT.length / 2
   const scale = surface === 'floor'
-    ? AIM_FLOOR_MIN_SCALE + ballHeight * AIM_FLOOR_GROWTH_PER_METRE
-    : AIM_WALL_SCALE
+    ? MARKER_MIN_SCALE + ballHeight * MARKER_GROWTH_PER_METRE
+    : PULSE_WALL_SCALE
   mesh.scale.setScalar(scale)
   switch (surface) {
     case 'floor':
-      mesh.position.set(contact.x, AIM_FLOOR_Y, contact.z)
+      mesh.position.set(contact.x, MARKER_Y, contact.z)
       mesh.rotation.set(0, 0, 0)
       return
     case 'front':
-      mesh.position.set(contact.x, contact.y, -halfL + AIM_SURFACE_INSET)
+      mesh.position.set(contact.x, contact.y, -halfL + SURFACE_INSET)
       mesh.rotation.set(Math.PI / 2, 0, 0)
       return
     case 'back':
-      mesh.position.set(contact.x, contact.y, halfL - AIM_SURFACE_INSET)
+      mesh.position.set(contact.x, contact.y, halfL - SURFACE_INSET)
       mesh.rotation.set(-Math.PI / 2, 0, 0)
       return
     case 'left':
-      mesh.position.set(-halfW + AIM_SURFACE_INSET, contact.y, contact.z)
+      mesh.position.set(-halfW + SURFACE_INSET, contact.y, contact.z)
       mesh.rotation.set(0, 0, -Math.PI / 2)
       return
     case 'right':
-      mesh.position.set(halfW - AIM_SURFACE_INSET, contact.y, contact.z)
+      mesh.position.set(halfW - SURFACE_INSET, contact.y, contact.z)
       mesh.rotation.set(0, 0, Math.PI / 2)
   }
 }
@@ -75,8 +73,9 @@ function writeAimArc(
   launch: BallisticLaunch,
   contact: SurfaceContact,
   grid: THREE.LineSegments,
-  positions: THREE.BufferAttribute,
+  geometry: THREE.BufferGeometry,
 ): void {
+  const positions = geometry.getAttribute('position') as THREE.BufferAttribute
   const last = ARC_SEGMENTS
   for (let i = 0; i < last; i++) {
     ballisticPointAt(launch, contact.time * (i / last), _arcPoint)
@@ -84,6 +83,7 @@ function writeAimArc(
   }
   positions.setXYZ(last, grid.position.x, grid.position.y, grid.position.z)
   positions.needsUpdate = true
+  geometry.computeBoundingSphere()
 }
 
 interface SurfaceAimMarkerProps {
@@ -224,8 +224,7 @@ export default function SurfaceAimMarker({
     }
 
     placeAimGrid(contact.surface, contact, launch.origin.y, grid)
-    const positions = arcGeometry.getAttribute('position') as THREE.BufferAttribute
-    writeAimArc(launch, contact, grid, positions)
+    writeAimArc(launch, contact, grid, arcGeometry)
     material.color.set(contact.kind === 'fault' ? HEX.tinDanger : HEX.player)
     root.visible = true
   })
