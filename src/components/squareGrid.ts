@@ -1,10 +1,16 @@
 import * as THREE from 'three'
 
 /**
- * Divisions of the live ball floor grid and its impact pulse.
- * Shared so the charge-aim marker cannot drift from that grid.
+ * Live ball floor grid and wall impact pulse.
+ * The charge-aim marker imports these so its grid cannot drift.
  */
 export const GRID_DIVISIONS = 3
+export const MARKER_Y = 0.008
+export const MARKER_MIN_SCALE = 0.1
+export const MARKER_GROWTH_PER_METRE = 0.07
+/** Keep grids slightly off surfaces so court meshes do not z-fight them. */
+export const SURFACE_INSET = 0.012
+export const PULSE_WALL_SCALE = 0.2
 
 /** Axis-aligned square grid in the XZ plane, centred at the origin. */
 export function createSquareGridGeometry(

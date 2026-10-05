@@ -20,7 +20,15 @@ import {
   ballHitFlashMix,
 } from '../systems/ballHitFlash'
 import { isServeBallHeld, isBallFrozenBetweenPoints, serveBallWorldPosition } from '../systems/serveRules'
-import { createSquareGridGeometry, GRID_DIVISIONS } from './squareGrid'
+import {
+  createSquareGridGeometry,
+  GRID_DIVISIONS,
+  MARKER_GROWTH_PER_METRE,
+  MARKER_MIN_SCALE,
+  MARKER_Y,
+  PULSE_WALL_SCALE,
+  SURFACE_INSET,
+} from './squareGrid'
 import {
   PIXEL_SHARD_COUNT,
   PIXEL_SHARD_DRIFT_SPEED,
@@ -82,21 +90,16 @@ const PREFERS_REDUCED_MOTION =
  * Floor / impact grid. With no lights in the scene a real shadow is not available, so
  * this square neon grid is the cue for ball height and contact location.
  * Geometry is unit half-extent 1 → world width 2×scale (matches the old disc diameter).
+ * Size and inset live in `squareGrid.ts` so the charge-aim marker shares them.
+ * Near opacity is authored for bloom’s linear pipeline — near ≈ old disc 0.55 after displayAlpha.
  */
-const MARKER_Y = 0.008
-const MARKER_MIN_SCALE = 0.1
-const MARKER_GROWTH_PER_METRE = 0.07
-/** Authored for bloom’s linear pipeline — near ≈ old disc 0.55 after displayAlpha. */
 const MARKER_NEAR_OPACITY = displayAlpha(0.78)
 const MARKER_FAR_OPACITY = displayAlpha(0.4)
 /** Height at which the marker reaches its faintest. */
 const MARKER_FADE_HEIGHT = 3
-/** Keep grids slightly off surfaces so court meshes do not z-fight them. */
-const SURFACE_INSET = 0.012
 const PULSE_DURATION_S = 0.28
 const PULSE_EXPAND = 0.38
 const PULSE_PEAK_OPACITY = displayAlpha(0.95)
-const PULSE_WALL_SCALE = 0.2
 /** Rising-edge pulse when canHit flips on (skipped under reduced motion). */
 const LIVE_BALL_PULSE_MS = 220
 const LIVE_BALL_PULSE_MIX = 0.55
