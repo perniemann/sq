@@ -6,9 +6,11 @@ import { displayAlpha } from '../config'
 import { chargeDurationToPower, useInputStore } from '../hooks/useInput'
 import { isInStrikeRange } from '../systems/hitTiming'
 import {
+  ballisticPointAt,
   fillPreviewLaunch,
   predictSurfaceContact,
   type BallisticLaunch,
+  type BallisticPoint,
   type CourtSurface,
   type SurfaceContact,
 } from '../systems/predictedContact'
@@ -17,55 +19,71 @@ import type { ServiceBox } from '../systems/serveRules'
 import type { ShotType } from '../systems/shotContext'
 import { useGameStore } from '../stores/gameStore'
 import { HEX } from '../theme/colors'
+import { createSquareGridGeometry, GRID_DIVISIONS } from './squareGrid'
 
-/** Half-extent of the aim cross (metres). Smaller than the live ball grid. */
-const CROSS_HALF = 0.11
-
-/** Keep the cross just off the surface so court meshes do not z-fight it. */
-const PREDICT_SURFACE_INSET = 0.01
-
-function createCrossGeometry(): THREE.BufferGeometry {
-  const s = CROSS_HALF
-  const positions = new Float32Array([
-    -s, 0, 0, s, 0, 0,
-    0, 0, -s, 0, 0, s,
-  ])
-  const geometry = new THREE.BufferGeometry()
-  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
-  return geometry
-}
+/** Samples along the flight, plus one vertex on the contact grid. */
+const ARC_SEGMENTS = 16
 
 /**
- * Lay an XZ cross on the contact face. Rotations match the live impact grid.
+ * Contact grid matches the live ball marker: wall size is the impact pulse,
+ * floor size is the same height formula. Insets match that marker too.
  */
-function placeCross(
+const AIM_WALL_SCALE = 0.2
+const AIM_FLOOR_MIN_SCALE = 0.1
+const AIM_FLOOR_GROWTH_PER_METRE = 0.07
+const AIM_FLOOR_Y = 0.008
+const AIM_SURFACE_INSET = 0.012
+
+const _arcPoint: BallisticPoint = { x: 0, y: 0, z: 0 }
+
+function placeAimGrid(
   surface: CourtSurface,
   contact: SurfaceContact,
+  ballHeight: number,
   mesh: THREE.LineSegments,
 ): void {
   const halfW = COURT.width / 2
   const halfL = COURT.length / 2
+  const scale = surface === 'floor'
+    ? AIM_FLOOR_MIN_SCALE + ballHeight * AIM_FLOOR_GROWTH_PER_METRE
+    : AIM_WALL_SCALE
+  mesh.scale.setScalar(scale)
   switch (surface) {
     case 'floor':
-      mesh.position.set(contact.x, PREDICT_SURFACE_INSET, contact.z)
+      mesh.position.set(contact.x, AIM_FLOOR_Y, contact.z)
       mesh.rotation.set(0, 0, 0)
       return
     case 'front':
-      mesh.position.set(contact.x, contact.y, -halfL + PREDICT_SURFACE_INSET)
+      mesh.position.set(contact.x, contact.y, -halfL + AIM_SURFACE_INSET)
       mesh.rotation.set(Math.PI / 2, 0, 0)
       return
     case 'back':
-      mesh.position.set(contact.x, contact.y, halfL - PREDICT_SURFACE_INSET)
+      mesh.position.set(contact.x, contact.y, halfL - AIM_SURFACE_INSET)
       mesh.rotation.set(-Math.PI / 2, 0, 0)
       return
     case 'left':
-      mesh.position.set(-halfW + PREDICT_SURFACE_INSET, contact.y, contact.z)
+      mesh.position.set(-halfW + AIM_SURFACE_INSET, contact.y, contact.z)
       mesh.rotation.set(0, 0, -Math.PI / 2)
       return
     case 'right':
-      mesh.position.set(halfW - PREDICT_SURFACE_INSET, contact.y, contact.z)
+      mesh.position.set(halfW - AIM_SURFACE_INSET, contact.y, contact.z)
       mesh.rotation.set(0, 0, Math.PI / 2)
   }
+}
+
+function writeAimArc(
+  launch: BallisticLaunch,
+  contact: SurfaceContact,
+  grid: THREE.LineSegments,
+  positions: THREE.BufferAttribute,
+): void {
+  const last = ARC_SEGMENTS
+  for (let i = 0; i < last; i++) {
+    ballisticPointAt(launch, contact.time * (i / last), _arcPoint)
+    positions.setXYZ(i, _arcPoint.x, _arcPoint.y, _arcPoint.z)
+  }
+  positions.setXYZ(last, grid.position.x, grid.position.y, grid.position.z)
+  positions.needsUpdate = true
 }
 
 interface SurfaceAimMarkerProps {
@@ -74,26 +92,40 @@ interface SurfaceAimMarkerProps {
 }
 
 /**
- * First-surface cross while the human is aiming.
+ * Ballistic aim arc while the human is charging, ending on the pixel contact grid.
  * Serve: the whole charge, from the held ball. Rally: only inside strike range,
- * and only after the shot name has committed, so the cross does not jump ahead of the label.
+ * and only after the shot name has committed, so the arc does not jump ahead of the label.
  */
 export default function SurfaceAimMarker({
   ballRef,
   playerPositionVec,
 }: SurfaceAimMarkerProps): React.ReactElement {
-  const meshRef = useRef<THREE.LineSegments>(null)
-  const geometry = useMemo(() => createCrossGeometry(), [])
+  const rootRef = useRef<THREE.Group>(null)
+  const gridRef = useRef<THREE.LineSegments>(null)
+  const gridGeometry = useMemo(() => createSquareGridGeometry(1, GRID_DIVISIONS), [])
+  const arcGeometry = useMemo(() => {
+    const geometry = new THREE.BufferGeometry()
+    geometry.setAttribute(
+      'position',
+      new THREE.BufferAttribute(new Float32Array((ARC_SEGMENTS + 1) * 3), 3),
+    )
+    return geometry
+  }, [])
   const material = useMemo(
     () =>
       new THREE.LineBasicMaterial({
         color: HEX.player,
         transparent: true,
-        opacity: displayAlpha(0.85),
+        opacity: displayAlpha(0.9),
         depthWrite: false,
       }),
     [],
   )
+  const arcLine = useMemo(() => {
+    const line = new THREE.Line(arcGeometry, material)
+    line.frustumCulled = false
+    return line
+  }, [arcGeometry, material])
   const launchRef = useRef<BallisticLaunch>({
     origin: { x: 0, y: 0, z: 0 },
     direction: { x: 0, y: 0, z: 0 },
@@ -126,8 +158,9 @@ export default function SurfaceAimMarker({
   })
 
   useFrame(() => {
-    const mesh = meshRef.current
-    if (!mesh) return
+    const root = rootRef.current
+    const grid = gridRef.current
+    if (!root || !grid) return
 
     const store = useGameStore.getState()
     const input = useInputStore.getState()
@@ -139,7 +172,7 @@ export default function SurfaceAimMarker({
       (store.phase === 'serving' || store.phase === 'rally')
 
     if (!aiming) {
-      mesh.visible = false
+      root.visible = false
       return
     }
 
@@ -158,17 +191,17 @@ export default function SurfaceAimMarker({
     } else {
       const body = ballRef.current
       if (!body) {
-        mesh.visible = false
+        root.visible = false
         return
       }
       const ball = body.translation()
       const player = playerPositionVec.current
       if (!isInStrikeRange(player, ball)) {
-        mesh.visible = false
+        root.visible = false
         return
       }
       if (!store.currentShotType) {
-        mesh.visible = false
+        root.visible = false
         return
       }
       const rallyInput = rallyInputRef.current
@@ -186,22 +219,26 @@ export default function SurfaceAimMarker({
     }
 
     if (!filled || !predictSurfaceContact(launch, contact)) {
-      mesh.visible = false
+      root.visible = false
       return
     }
 
-    placeCross(contact.surface, contact, mesh)
+    placeAimGrid(contact.surface, contact, launch.origin.y, grid)
+    const positions = arcGeometry.getAttribute('position') as THREE.BufferAttribute
+    writeAimArc(launch, contact, grid, positions)
     material.color.set(contact.kind === 'fault' ? HEX.tinDanger : HEX.player)
-    mesh.visible = true
+    root.visible = true
   })
 
   return (
-    <lineSegments
-      ref={meshRef}
-      geometry={geometry}
-      material={material}
-      visible={false}
-      frustumCulled={false}
-    />
+    <group ref={rootRef} visible={false}>
+      <primitive object={arcLine} />
+      <lineSegments
+        ref={gridRef}
+        geometry={gridGeometry}
+        material={material}
+        frustumCulled={false}
+      />
+    </group>
   )
 }

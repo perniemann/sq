@@ -20,6 +20,7 @@ import {
   ballHitFlashMix,
 } from '../systems/ballHitFlash'
 import { isServeBallHeld, isBallFrozenBetweenPoints, serveBallWorldPosition } from '../systems/serveRules'
+import { createSquareGridGeometry, GRID_DIVISIONS } from './squareGrid'
 import {
   PIXEL_SHARD_COUNT,
   PIXEL_SHARD_DRIFT_SPEED,
@@ -90,7 +91,6 @@ const MARKER_NEAR_OPACITY = displayAlpha(0.78)
 const MARKER_FAR_OPACITY = displayAlpha(0.4)
 /** Height at which the marker reaches its faintest. */
 const MARKER_FADE_HEIGHT = 3
-const GRID_DIVISIONS = 3
 /** Keep grids slightly off surfaces so court meshes do not z-fight them. */
 const SURFACE_INSET = 0.012
 const PULSE_DURATION_S = 0.28
@@ -115,20 +115,6 @@ interface ImpactRequest {
 
 function isWallName(name: string): name is WallName {
   return (WALL_NAMES as readonly string[]).includes(name)
-}
-
-/** Axis-aligned square grid in the XZ plane, centred at the origin. */
-function createSquareGridGeometry(halfExtent: number, divisions: number): THREE.BufferGeometry {
-  const positions: number[] = []
-  const step = (halfExtent * 2) / divisions
-  for (let i = 0; i <= divisions; i++) {
-    const t = -halfExtent + i * step
-    positions.push(-halfExtent, 0, t, halfExtent, 0, t)
-    positions.push(t, 0, -halfExtent, t, 0, halfExtent)
-  }
-  const geometry = new THREE.BufferGeometry()
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
-  return geometry
 }
 
 function placeImpactTransform(
