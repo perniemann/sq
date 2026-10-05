@@ -96,6 +96,29 @@ function axisAt(p0: number, v0: number, accel: number, t: number): number {
   return p0 + (drift * (1 - decay)) / BALL_LINEAR_DAMPING + (accel / BALL_LINEAR_DAMPING) * t
 }
 
+export interface BallisticPoint {
+  x: number
+  y: number
+  z: number
+}
+
+/**
+ * Position along the same damped flight `predictSurfaceContact` integrates.
+ * `t = 0` is the launch origin. Writes into `out` so a per-frame arc can sample it.
+ */
+export function ballisticPointAt(
+  launch: BallisticLaunch,
+  t: number,
+  out: BallisticPoint,
+): void {
+  const vx = launch.direction.x * launch.speed
+  const vy = launch.direction.y * launch.speed
+  const vz = launch.direction.z * launch.speed
+  out.x = axisAt(launch.origin.x, vx, 0, t)
+  out.y = axisAt(launch.origin.y, vy, GRAVITY_Y, t)
+  out.z = axisAt(launch.origin.z, vz, 0, t)
+}
+
 function timeToFloor(y0: number, vy0: number): number | null {
   const target = BALL_RADIUS
   if (y0 <= target) return null

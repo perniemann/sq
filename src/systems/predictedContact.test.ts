@@ -4,6 +4,7 @@ import { BALL_LINEAR_DAMPING, GRAVITY_Y } from '../config'
 import { BALL_RADIUS, COURT, FRONT_WALL_Z } from './court'
 import { aimToPlayerRotation } from './aimRotation'
 import {
+  ballisticPointAt,
   fillPreviewLaunch,
   predictSurfaceContact,
   timeToDampedPlane,
@@ -61,6 +62,38 @@ describe('timeToDampedPlane', () => {
 
   it('returns null when the damped asymptote falls short', () => {
     expect(timeToDampedPlane(0, 0.1, 1)).toBeNull()
+  })
+})
+
+describe('ballisticPointAt', () => {
+  it('starts at the origin, ends on the contact, and bows above the chord', () => {
+    const pose = serveBallWorldPosition('right')
+    const dir = serveStrikeDirection('right', 0.4, 0.7)
+    const preview: BallisticLaunch = {
+      origin: { x: pose.x, y: pose.y, z: pose.z },
+      direction: dir,
+      speed: serveSpeed(0.5),
+      serve: true,
+    }
+    const contact = blankContact()
+    expect(predictSurfaceContact(preview, contact)).toBe(true)
+    expect(contact.surface).toBe('front')
+
+    const point = { x: 0, y: 0, z: 0 }
+    ballisticPointAt(preview, 0, point)
+    expect(point.x).toBeCloseTo(preview.origin.x, 8)
+    expect(point.y).toBeCloseTo(preview.origin.y, 8)
+    expect(point.z).toBeCloseTo(preview.origin.z, 8)
+
+    ballisticPointAt(preview, contact.time, point)
+    expect(point.x).toBeCloseTo(contact.x, 6)
+    expect(point.y).toBeCloseTo(contact.y, 6)
+    expect(point.z).toBeCloseTo(contact.z, 6)
+
+    const mid = { x: 0, y: 0, z: 0 }
+    ballisticPointAt(preview, contact.time * 0.5, mid)
+    const chordY = (preview.origin.y + contact.y) * 0.5
+    expect(mid.y).toBeGreaterThan(chordY + 0.05)
   })
 })
 

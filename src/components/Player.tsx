@@ -17,10 +17,8 @@ import { type MovementPhase, type ChargePhase, useGameStore } from '../stores/ga
 import { T_POSITION } from '../systems/courtPositions'
 import {
   isAthleteHeldBetweenPoints,
-  serveBallWorldPosition,
   serveFloorNeedleTheta,
   serveFloorWedge,
-  serveStrikeDirection,
   type ServiceBox,
 } from '../systems/serveRules'
 import {
@@ -47,7 +45,6 @@ import { HEX } from '../theme/colors'
 import {
   AIM_ARC_RANGE,
   AIM_NEUTRAL,
-  aimPreviewDirection,
   aimToFloorNeedleTheta,
   aimToPlayerRotation,
   chargeRingHintActivation,
@@ -731,11 +728,6 @@ export default function Player({
         )}
       </group>
 
-      {/* Racquet → shot aim beam (world space). Forward arc only. */}
-      {isCurrentStriker && isCharging && isControllable && racquetReady && (
-        <ShotAimBeam color={color} racquetPosRef={racquetPositionRef} />
-      )}
-      
       {/* Racquet - primitive geometry with physics sensor and swing animation */}
       {racquetReady && (
         <RigidBody
@@ -759,94 +751,6 @@ export default function Player({
         </RigidBody>
       )}
     </>
-  )
-}
-
-/** World-space length of the racquet → shot aim beam (metres). */
-const SHOT_AIM_BEAM_LENGTH = 2.8
-
-const _aimBeamDir = new THREE.Vector3()
-const _aimBeamTip = new THREE.Vector3()
-
-/**
- * Charge aim line. Rally draws the 180° cone from the racquet (`aimPreviewDirection`),
- * including a downward kill. A serve draws `serveStrikeDirection` from the held ball —
- * the same always-up launch the strike applies — so the line cannot dive into the floor.
- * Length is the launch tangent, not the surface contact. The floor ring still carries
- * the wide stick. Updated in useFrame so it tracks without React re-renders.
- */
-function ShotAimBeam({
-  color,
-  racquetPosRef,
-}: {
-  color: string
-  racquetPosRef: React.MutableRefObject<THREE.Vector3>
-}): React.ReactElement {
-  const tipRef = useRef<THREE.Mesh>(null)
-  const geom = useMemo(() => {
-    const g = new THREE.BufferGeometry()
-    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3))
-    return g
-  }, [])
-  const mat = useMemo(
-    () =>
-      new THREE.LineBasicMaterial({
-        color,
-        transparent: true,
-        opacity: displayAlpha(0.95),
-        depthWrite: false,
-      }),
-    [color],
-  )
-  const lineObj = useMemo(() => new THREE.Line(geom, mat), [geom, mat])
-
-  useFrame(() => {
-    const { aim, loft } = useInputStore.getState()
-    const phase = useGameStore.getState().phase
-    let originX: number
-    let originY: number
-    let originZ: number
-
-    if (phase === 'serving') {
-      const box = useGameStore.getState().serviceBox
-      const pose = serveBallWorldPosition(box)
-      const strike = serveStrikeDirection(box, aim, loft)
-      _aimBeamDir.set(strike.x, strike.y, strike.z)
-      originX = pose.x
-      originY = pose.y
-      originZ = pose.z
-    } else {
-      _aimBeamDir.copy(aimPreviewDirection(aim, loft))
-      originX = racquetPosRef.current.x
-      originY = racquetPosRef.current.y
-      originZ = racquetPosRef.current.z
-    }
-
-    _aimBeamTip.set(originX, originY, originZ).addScaledVector(_aimBeamDir, SHOT_AIM_BEAM_LENGTH)
-
-    const pos = lineObj.geometry.attributes.position as THREE.BufferAttribute
-    pos.setXYZ(0, originX, originY, originZ)
-    pos.setXYZ(1, _aimBeamTip.x, _aimBeamTip.y, _aimBeamTip.z)
-    pos.needsUpdate = true
-    lineObj.geometry.computeBoundingSphere()
-
-    const tip = tipRef.current
-    if (tip) tip.position.copy(_aimBeamTip)
-  })
-
-  return (
-    <group>
-      <primitive object={lineObj} />
-      <mesh ref={tipRef}>
-        <sphereGeometry args={[0.045, 10, 10]} />
-        <meshBasicMaterial
-          color={color}
-          transparent
-          opacity={displayAlpha(0.95)}
-          depthWrite={false}
-        />
-      </mesh>
-    </group>
   )
 }
 

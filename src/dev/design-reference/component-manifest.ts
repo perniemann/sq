@@ -106,6 +106,6 @@ export const COMPONENT_MANIFEST: readonly ComponentManifestEntry[] = [
     sectionId: 'dr-system',
     displayTitle: 'SurfaceAimMarker',
     kind: 'excluded',
-    reason: 'Charge preview cross; needs the live ball, aim stick, and physics world.',
+    reason: 'Charge preview arc and contact grid; needs the live ball, aim stick, and physics world.',
   },
 ] as const
